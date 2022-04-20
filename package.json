@@ -46,11 +46,14 @@
     "typescript": "^4.6.3"
   },
   "lint-staged": {
-    "*.ts": [
+    "src/**/*.ts": [
       "npm run format",
       "npm run lint",
       "npm run build",
       "npm run package"
+    ],
+    "__tests__/**/*.ts": [
+      "npm run format"
     ]
   }
 }
