@@ -26,9 +26,11 @@
   "author": "",
   "license": "MIT",
   "dependencies": {
-    "@actions/core": "^1.6.0"
+    "@actions/core": "^1.6.0",
+    "@actions/github": "^5.0.1"
   },
   "devDependencies": {
+    "@octokit/types": "^6.34.0",
     "@types/node": "^16.11.27",
     "@typescript-eslint/parser": "^5.20.0",
     "@vercel/ncc": "^0.33.4",
