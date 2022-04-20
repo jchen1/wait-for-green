@@ -4,7 +4,10 @@ author: 'Jeff Chen'
 inputs:
   token:
     required: true
-    description: 'Likely ${{ secrets.GITHUB_TOKEN }}'
+    description: 'Likely secrets.GITHUB_TOKEN.'
+  commit:
+    required: false
+    description: 'Commit hash to check. Defaults to $GITHUB_SHA.'
 outputs:
   success:
     description: '"true" if all statuses are successful or skipped and "false" otherwise'
