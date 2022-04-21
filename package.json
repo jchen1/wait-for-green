@@ -47,9 +47,9 @@
   },
   "lint-staged": {
     "src/**/*.ts": [
+      "npm run build",
       "npm run format",
       "npm run lint",
-      "npm run build",
       "npm run package"
     ],
     "__tests__/**/*.ts": [

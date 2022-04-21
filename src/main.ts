@@ -14,7 +14,7 @@ type Config = {
 
 async function checkChecks(octokit: Octokit, config: Config): Promise<boolean> {
   const checks = await octokit.rest.checks.listForRef(config);
-  core.info(JSON.stringify(checks, null, 2));
+  core.info(JSON.stringify(checks.data, null, 2));
   return true;
 }
 
@@ -23,7 +23,7 @@ async function checkStatuses(
   config: Config
 ): Promise<boolean> {
   const statuses = await octokit.rest.repos.getCombinedStatusForRef(config);
-  core.info(JSON.stringify(statuses, null, 2));
+  core.info(JSON.stringify(statuses.data, null, 2));
   return true;
 }
 
