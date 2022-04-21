@@ -1,11 +1,16 @@
-name: 'Your name here'
-description: 'Provide a description here'
-author: 'Your name or organization here'
+name: 'Wait for Green'
+description: 'Wait for commit statuses and checks to become green'
+author: 'Jeff Chen'
 inputs:
-  milliseconds: # change this
+  token:
     required: true
-    description: 'input description here'
-    default: 'default value if applicable'
+    description: 'Likely secrets.GITHUB_TOKEN.'
+  commit:
+    required: false
+    description: 'Commit hash to check. Defaults to $GITHUB_SHA.'
+outputs:
+  success:
+    description: '"true" if all statuses are successful or skipped and "false" otherwise'
 runs:
   using: 'node16'
   main: 'dist/index.js'
