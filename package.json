@@ -5,7 +5,7 @@
   "description": "GitHub Action to wait for commit statuses and checks to become green",
   "main": "lib/main.js",
   "scripts": {
-    "build": "tsc",
+    "build": "tsc --noEmit",
     "format": "prettier --write '**/*.ts'",
     "format-check": "prettier --check '**/*.ts'",
     "lint": "eslint src/**/*.ts",
