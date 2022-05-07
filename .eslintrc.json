@@ -48,10 +48,13 @@
     "@typescript-eslint/promise-function-async": "error",
     "@typescript-eslint/require-array-sort-compare": "error",
     "@typescript-eslint/restrict-plus-operands": "error",
-    "semi": "off",
+    "semi": ["error", "always"],
     "@typescript-eslint/semi": ["error", "always"],
     "@typescript-eslint/type-annotation-spacing": "error",
-    "@typescript-eslint/unbound-method": "error"
+    "@typescript-eslint/unbound-method": "error",
+    "github/array-foreach": "off",
+    "no-shadow": "off",
+    "@typescript-eslint/no-shadow": "error"
   },
   "env": {
     "node": true,
