@@ -173,10 +173,15 @@ async function run(): Promise<void> {
     }
 
     const repo = process.env['GITHUB_REPOSITORY'].split('/')[1];
-    const ref = core.getInput('commit') || process.env['GITHUB_SHA'];
+    const ref =
+      core.getInput('commit') ||
+      process.env['GITHUB_HEAD_REF'] ||
+      process.env['GITHUB_SHA'];
 
     if (!ref) {
-      throw new Error('Neither `inputs.commit` nor `$GITHUB_SHA` are set!');
+      throw new Error(
+        'None of `inputs.commit`, `$GITHUB_HEAD_REF`, or`$GITHUB_SHA` are set!'
+      );
     }
 
     // todo: ignore certain actions?
