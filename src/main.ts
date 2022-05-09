@@ -28,6 +28,29 @@ enum Status {
   Success = 'success'
 }
 
+function checkToStatus(status: string): Status {
+  // todo: skipped? canceled?
+  switch (status) {
+    case 'success':
+    case 'neutral':
+      return Status.Success;
+    case 'failure':
+    case 'timed_out':
+      return Status.Failure;
+    case 'pending':
+    case 'action_required':
+    case 'queued':
+    case 'in_progres':
+      return Status.Pending;
+    case 'skipped':
+      return Status.Skipped;
+    case 'cancelled':
+      return Status.Canceled;
+    default:
+      return Status.Unknown;
+  }
+}
+
 function stringToStatus(status: string): Status {
   // todo: skipped? canceled?
   switch (status) {
@@ -89,8 +112,42 @@ const SLEEP_TIME_MS = 10000;
 
 async function checkChecks(octokit: Octokit, config: Config): Promise<Status> {
   const checks = await octokit.rest.checks.listForRef(config);
-  core.info(JSON.stringify(checks.data, null, 2));
-  return Status.Success;
+  const statusByName: Record<string, [number, Status]> = {};
+
+  checks.data.check_runs.forEach(checkStatus => {
+    const ts = checkStatus.completed_at ?? checkStatus.started_at;
+    const unixTs = ts ? new Date(ts).getTime() : null;
+    const existing = statusByName[checkStatus.name];
+    if (!existing || (unixTs && existing[0] < unixTs)) {
+      const newStatus = checkToStatus(
+        checkStatus.conclusion ?? checkStatus.status
+      );
+      statusByName[checkStatus.name] = [unixTs!, newStatus];
+      core.info(
+        `${existing ? 'Updating' : 'Creating'} context ${
+          checkStatus.name
+        } with status ${newStatus}`
+      );
+    } else {
+      core.info(
+        `Status with context ${checkStatus.name} has superseding status, skipping...`
+      );
+    }
+  });
+
+  const statusValues = Object.values(statusByName).map(x => x[1]);
+  if (statusValues.includes(Status.Pending) || statusValues.length === 0) {
+    return Status.Pending;
+  }
+  if (statusValues.every(val => val === Status.Success)) {
+    return Status.Success;
+  }
+  if (statusValues.includes(Status.Failure)) {
+    return Status.Failure;
+  }
+
+  core.warning(`Unknown statuses: ${JSON.stringify(statusByName, null, 2)}`);
+  return Status.Unknown;
 }
 
 async function checkStatuses(
@@ -128,6 +185,8 @@ async function run(): Promise<void> {
       repo,
       ref
     };
+
+    core.info(`checking statuses & checks for ${owner}/${repo}@${ref}...`);
 
     let success = false;
     for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
