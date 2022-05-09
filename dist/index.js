@@ -8723,14 +8723,14 @@ function combinedStatusToStatus(status, ignored) {
         }
     });
     const statusValues = Object.values(statusByContext).map(x => x[1]);
+    if (statusValues.includes(Status.Failure)) {
+        return Status.Failure;
+    }
     if (statusValues.includes(Status.Pending) || statusValues.length === 0) {
         return Status.Pending;
     }
     if (statusValues.every(val => val === Status.Success)) {
         return Status.Success;
-    }
-    if (statusValues.includes(Status.Failure)) {
-        return Status.Failure;
     }
     core.warning(`Unknown statuses: ${JSON.stringify(statusByContext, null, 2)}`);
     return Status.Unknown;
@@ -8759,14 +8759,14 @@ function checkChecks(octokit, config, ignored) {
             }
         });
         const statusValues = Object.values(statusByName).map(x => x[1]);
+        if (statusValues.includes(Status.Failure)) {
+            return Status.Failure;
+        }
         if (statusValues.includes(Status.Pending) || statusValues.length === 0) {
             return Status.Pending;
         }
         if (statusValues.every(val => val === Status.Success)) {
             return Status.Success;
-        }
-        if (statusValues.includes(Status.Failure)) {
-            return Status.Failure;
         }
         core.warning(`Unknown checks: ${JSON.stringify(statusByName, null, 2)}`);
         return Status.Unknown;
