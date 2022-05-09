@@ -47,6 +47,7 @@ function checkToStatus(status: string): Status {
     case 'cancelled':
       return Status.Canceled;
     default:
+      core.info(`Unhandled check status: ${status}`);
       return Status.Unknown;
   }
 }
@@ -61,6 +62,7 @@ function stringToStatus(status: string): Status {
     case 'pending':
       return Status.Pending;
     default:
+      core.info(`Unhandled status: ${status}`);
       return Status.Unknown;
   }
 }
@@ -146,7 +148,7 @@ async function checkChecks(octokit: Octokit, config: Config): Promise<Status> {
     return Status.Failure;
   }
 
-  core.warning(`Unknown statuses: ${JSON.stringify(statusByName, null, 2)}`);
+  core.warning(`Unknown checks: ${JSON.stringify(statusByName, null, 2)}`);
   return Status.Unknown;
 }
 
