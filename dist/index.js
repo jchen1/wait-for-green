@@ -8656,6 +8656,15 @@ var Status;
     Status["Pending"] = "pending";
     Status["Success"] = "success";
 })(Status || (Status = {}));
+function shouldIgnoreCheck(ignored, checkName) {
+    if (ignored === '') {
+        return false;
+    }
+    if (ignored.startsWith('/') && ignored.endsWith('/')) {
+        return new RegExp(ignored.slice(1, -1)).test(checkName);
+    }
+    return ignored.split(',').includes(checkName);
+}
 function checkToStatus(status) {
     // todo: skipped? canceled?
     switch (status) {
@@ -8668,7 +8677,7 @@ function checkToStatus(status) {
         case 'pending':
         case 'action_required':
         case 'queued':
-        case 'in_progres':
+        case 'in_progress':
             return Status.Pending;
         case 'skipped':
             return Status.Skipped;
@@ -8693,9 +8702,12 @@ function stringToStatus(status) {
             return Status.Unknown;
     }
 }
-function combinedStatusToStatus(status) {
+function combinedStatusToStatus(status, ignored) {
     const statusByContext = {};
     status.statuses.forEach(simpleStatus => {
+        if (shouldIgnoreCheck(ignored, simpleStatus.context)) {
+            return;
+        }
         const ts = new Date(simpleStatus.updated_at).getTime();
         const existing = statusByContext[simpleStatus.context];
         if (!existing || existing[0] < ts) {
@@ -8725,12 +8737,15 @@ function combinedStatusToStatus(status) {
 }
 const MAX_ATTEMPTS = 100;
 const SLEEP_TIME_MS = 10000;
-function checkChecks(octokit, config) {
+function checkChecks(octokit, config, ignored) {
     return __awaiter(this, void 0, void 0, function* () {
         const checks = yield octokit.rest.checks.listForRef(config);
         const statusByName = {};
         checks.data.check_runs.forEach(checkStatus => {
             var _a, _b;
+            if (shouldIgnoreCheck(ignored, checkStatus.name)) {
+                return;
+            }
             const ts = (_a = checkStatus.completed_at) !== null && _a !== void 0 ? _a : checkStatus.started_at;
             const unixTs = ts ? new Date(ts).getTime() : null;
             const existing = statusByName[checkStatus.name];
@@ -8757,10 +8772,10 @@ function checkChecks(octokit, config) {
         return Status.Unknown;
     });
 }
-function checkStatuses(octokit, config) {
+function checkStatuses(octokit, config, ignored) {
     return __awaiter(this, void 0, void 0, function* () {
         const statuses = yield octokit.rest.repos.getCombinedStatusForRef(config);
-        return combinedStatusToStatus(statuses.data);
+        return combinedStatusToStatus(statuses.data, ignored);
     });
 }
 function run() {
@@ -8787,16 +8802,21 @@ function run() {
                 repo,
                 ref
             };
+            const ignored = core.getInput('ignored_checks');
             core.info(`checking statuses & checks for ${owner}/${repo}@${ref}...`);
             let success = false;
             for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
                 const [checks, statuses] = yield Promise.all([
-                    checkChecks(octokit, config),
-                    checkStatuses(octokit, config)
+                    checkChecks(octokit, config, ignored),
+                    checkStatuses(octokit, config, ignored)
                 ]);
                 core.info(`attempt ${attempt}: checks=${checks}, statuses=${statuses}`);
                 if (checks === Status.Success && statuses === Status.Success) {
                     success = true;
+                    break;
+                }
+                else if (checks === Status.Failure || statuses === Status.Failure) {
+                    success = false;
                     break;
                 }
                 yield sleep(SLEEP_TIME_MS);

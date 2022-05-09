@@ -28,6 +28,18 @@ enum Status {
   Success = 'success'
 }
 
+function shouldIgnoreCheck(ignored: string, checkName: string): boolean {
+  if (ignored === '') {
+    return false;
+  }
+
+  if (ignored.startsWith('/') && ignored.endsWith('/')) {
+    return new RegExp(ignored.slice(1, -1)).test(checkName);
+  }
+
+  return ignored.split(',').includes(checkName);
+}
+
 function checkToStatus(status: string): Status {
   // todo: skipped? canceled?
   switch (status) {
@@ -40,7 +52,7 @@ function checkToStatus(status: string): Status {
     case 'pending':
     case 'action_required':
     case 'queued':
-    case 'in_progres':
+    case 'in_progress':
       return Status.Pending;
     case 'skipped':
       return Status.Skipped;
@@ -70,10 +82,14 @@ function stringToStatus(status: string): Status {
 function combinedStatusToStatus(
   status: GetResponseDataTypeFromEndpointMethod<
     Octokit['rest']['repos']['getCombinedStatusForRef']
-  >
+  >,
+  ignored: string
 ): Status {
   const statusByContext: Record<string, [number, Status]> = {};
   status.statuses.forEach(simpleStatus => {
+    if (shouldIgnoreCheck(ignored, simpleStatus.context)) {
+      return;
+    }
     const ts = new Date(simpleStatus.updated_at).getTime();
     const existing = statusByContext[simpleStatus.context];
     if (!existing || existing[0] < ts) {
@@ -112,11 +128,19 @@ function combinedStatusToStatus(
 const MAX_ATTEMPTS = 100;
 const SLEEP_TIME_MS = 10000;
 
-async function checkChecks(octokit: Octokit, config: Config): Promise<Status> {
+async function checkChecks(
+  octokit: Octokit,
+  config: Config,
+  ignored: string
+): Promise<Status> {
   const checks = await octokit.rest.checks.listForRef(config);
   const statusByName: Record<string, [number, Status]> = {};
 
   checks.data.check_runs.forEach(checkStatus => {
+    if (shouldIgnoreCheck(ignored, checkStatus.name)) {
+      return;
+    }
+
     const ts = checkStatus.completed_at ?? checkStatus.started_at;
     const unixTs = ts ? new Date(ts).getTime() : null;
     const existing = statusByName[checkStatus.name];
@@ -154,10 +178,11 @@ async function checkChecks(octokit: Octokit, config: Config): Promise<Status> {
 
 async function checkStatuses(
   octokit: Octokit,
-  config: Config
+  config: Config,
+  ignored: string
 ): Promise<Status> {
   const statuses = await octokit.rest.repos.getCombinedStatusForRef(config);
-  return combinedStatusToStatus(statuses.data);
+  return combinedStatusToStatus(statuses.data, ignored);
 }
 
 async function run(): Promise<void> {
@@ -193,18 +218,23 @@ async function run(): Promise<void> {
       ref
     };
 
+    const ignored = core.getInput('ignored_checks');
+
     core.info(`checking statuses & checks for ${owner}/${repo}@${ref}...`);
 
     let success = false;
     for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
       const [checks, statuses] = await Promise.all([
-        checkChecks(octokit, config),
-        checkStatuses(octokit, config)
+        checkChecks(octokit, config, ignored),
+        checkStatuses(octokit, config, ignored)
       ]);
 
       core.info(`attempt ${attempt}: checks=${checks}, statuses=${statuses}`);
       if (checks === Status.Success && statuses === Status.Success) {
         success = true;
+        break;
+      } else if (checks === Status.Failure || statuses === Status.Failure) {
+        success = false;
         break;
       }
 
