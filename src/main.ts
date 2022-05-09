@@ -59,7 +59,7 @@ function checkToStatus(status: string): Status {
     case 'cancelled':
       return Status.Canceled;
     default:
-      core.info(`Unhandled check status: ${status}`);
+      core.warning(`unhandled check status: ${status}`);
       return Status.Unknown;
   }
 }
@@ -74,7 +74,7 @@ function stringToStatus(status: string): Status {
     case 'pending':
       return Status.Pending;
     default:
-      core.info(`Unhandled status: ${status}`);
+      core.warning(`unhandled status: ${status}`);
       return Status.Unknown;
   }
 }
@@ -99,13 +99,13 @@ function combinedStatusToStatus(
         newStatus
       ];
       core.info(
-        `${existing ? 'Updating' : 'Creating'} context ${
+        `${existing ? 'updating' : 'creating'} context ${
           simpleStatus.context
         } with status ${newStatus}`
       );
     } else {
       core.info(
-        `Status with context ${simpleStatus.context} has superseding status, skipping...`
+        `status with context ${simpleStatus.context} has superseding status, skipping...`
       );
     }
   });
@@ -121,7 +121,7 @@ function combinedStatusToStatus(
     return Status.Success;
   }
 
-  core.warning(`Unknown statuses: ${JSON.stringify(statusByContext, null, 2)}`);
+  core.warning(`unknown statuses: ${JSON.stringify(statusByContext, null, 2)}`);
   return Status.Unknown;
 }
 
@@ -150,13 +150,13 @@ async function checkChecks(
       );
       statusByName[checkStatus.name] = [unixTs!, newStatus];
       core.info(
-        `${existing ? 'Updating' : 'Creating'} context ${
+        `${existing ? 'updating' : 'creating'} context ${
           checkStatus.name
         } with status ${newStatus}`
       );
     } else {
       core.info(
-        `Status with context ${checkStatus.name} has superseding status, skipping...`
+        `status with context ${checkStatus.name} has superseding status, skipping...`
       );
     }
   });
@@ -241,6 +241,7 @@ async function run(): Promise<void> {
       await sleep(SLEEP_TIME_MS);
     }
 
+    core.info(`setting output \`success\` to ${success}`);
     core.setOutput('success', success);
   } catch (error) {
     if (error instanceof Error) core.setFailed(error.message);

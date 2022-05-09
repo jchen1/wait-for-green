@@ -8684,7 +8684,7 @@ function checkToStatus(status) {
         case 'cancelled':
             return Status.Canceled;
         default:
-            core.info(`Unhandled check status: ${status}`);
+            core.warning(`unhandled check status: ${status}`);
             return Status.Unknown;
     }
 }
@@ -8698,7 +8698,7 @@ function stringToStatus(status) {
         case 'pending':
             return Status.Pending;
         default:
-            core.info(`Unhandled status: ${status}`);
+            core.warning(`unhandled status: ${status}`);
             return Status.Unknown;
     }
 }
@@ -8716,10 +8716,10 @@ function combinedStatusToStatus(status, ignored) {
                 new Date(simpleStatus.updated_at).getTime(),
                 newStatus
             ];
-            core.info(`${existing ? 'Updating' : 'Creating'} context ${simpleStatus.context} with status ${newStatus}`);
+            core.info(`${existing ? 'updating' : 'creating'} context ${simpleStatus.context} with status ${newStatus}`);
         }
         else {
-            core.info(`Status with context ${simpleStatus.context} has superseding status, skipping...`);
+            core.info(`status with context ${simpleStatus.context} has superseding status, skipping...`);
         }
     });
     const statusValues = Object.values(statusByContext).map(x => x[1]);
@@ -8732,7 +8732,7 @@ function combinedStatusToStatus(status, ignored) {
     if (statusValues.every(val => val === Status.Success)) {
         return Status.Success;
     }
-    core.warning(`Unknown statuses: ${JSON.stringify(statusByContext, null, 2)}`);
+    core.warning(`unknown statuses: ${JSON.stringify(statusByContext, null, 2)}`);
     return Status.Unknown;
 }
 const MAX_ATTEMPTS = 100;
@@ -8752,10 +8752,10 @@ function checkChecks(octokit, config, ignored) {
             if (!existing || (unixTs && existing[0] < unixTs)) {
                 const newStatus = checkToStatus((_b = checkStatus.conclusion) !== null && _b !== void 0 ? _b : checkStatus.status);
                 statusByName[checkStatus.name] = [unixTs, newStatus];
-                core.info(`${existing ? 'Updating' : 'Creating'} context ${checkStatus.name} with status ${newStatus}`);
+                core.info(`${existing ? 'updating' : 'creating'} context ${checkStatus.name} with status ${newStatus}`);
             }
             else {
-                core.info(`Status with context ${checkStatus.name} has superseding status, skipping...`);
+                core.info(`status with context ${checkStatus.name} has superseding status, skipping...`);
             }
         });
         const statusValues = Object.values(statusByName).map(x => x[1]);
@@ -8821,6 +8821,7 @@ function run() {
                 }
                 yield sleep(SLEEP_TIME_MS);
             }
+            core.info(`setting output \`success\` to ${success}`);
             core.setOutput('success', success);
         }
         catch (error) {
