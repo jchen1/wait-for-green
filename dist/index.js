@@ -1,6 +1,245 @@
 require('./sourcemap-register.js');/******/ (() => { // webpackBootstrap
 /******/ 	var __webpack_modules__ = ({
 
+/***/ 3109:
+/***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
+
+"use strict";
+
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || function (mod) {
+    if (mod && mod.__esModule) return mod;
+    var result = {};
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    __setModuleDefault(result, mod);
+    return result;
+};
+var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+const core = __importStar(__nccwpck_require__(2186));
+const github = __importStar(__nccwpck_require__(5438));
+const process = __importStar(__nccwpck_require__(7282));
+function sleep(ms) {
+    return __awaiter(this, void 0, void 0, function* () {
+        return new Promise(resolve => {
+            setTimeout(() => resolve(), ms);
+        });
+    });
+}
+var Status;
+(function (Status) {
+    Status["Unknown"] = "unknown";
+    Status["Failure"] = "failure";
+    Status["Canceled"] = "canceled";
+    Status["Skipped"] = "skipped";
+    Status["Pending"] = "pending";
+    Status["Success"] = "success";
+})(Status || (Status = {}));
+function shouldIgnoreCheck(ignored, checkName) {
+    if (ignored === '') {
+        return false;
+    }
+    if (ignored.startsWith('/') && ignored.endsWith('/')) {
+        return new RegExp(ignored.slice(1, -1)).test(checkName);
+    }
+    return ignored.split(',').includes(checkName);
+}
+function checkToStatus(status) {
+    // todo: skipped? canceled?
+    switch (status) {
+        case 'success':
+        case 'neutral':
+            return Status.Success;
+        case 'failure':
+        case 'timed_out':
+            return Status.Failure;
+        case 'pending':
+        case 'action_required':
+        case 'queued':
+        case 'in_progress':
+            return Status.Pending;
+        case 'skipped':
+            return Status.Skipped;
+        case 'cancelled':
+            return Status.Canceled;
+        default:
+            core.warning(`unhandled check status: ${status}`);
+            return Status.Unknown;
+    }
+}
+function stringToStatus(status) {
+    // todo: skipped? canceled?
+    switch (status) {
+        case 'success':
+            return Status.Success;
+        case 'failure':
+            return Status.Failure;
+        case 'pending':
+            return Status.Pending;
+        default:
+            core.warning(`unhandled status: ${status}`);
+            return Status.Unknown;
+    }
+}
+function combinedStatusToStatus(status, ignored) {
+    const statusByContext = {};
+    status.statuses.forEach(simpleStatus => {
+        if (shouldIgnoreCheck(ignored, simpleStatus.context)) {
+            return;
+        }
+        const ts = new Date(simpleStatus.updated_at).getTime();
+        const existing = statusByContext[simpleStatus.context];
+        if (!existing || existing[0] < ts) {
+            const newStatus = stringToStatus(simpleStatus.state);
+            statusByContext[simpleStatus.context] = [
+                new Date(simpleStatus.updated_at).getTime(),
+                newStatus
+            ];
+            core.info(`${existing ? 'updating' : 'creating'} context ${simpleStatus.context} with status ${newStatus}`);
+        }
+        else {
+            core.info(`status with context ${simpleStatus.context} has superseding status, skipping...`);
+        }
+    });
+    const statusValues = Object.values(statusByContext).map(x => x[1]);
+    if (statusValues.includes(Status.Failure)) {
+        return Status.Failure;
+    }
+    if (statusValues.includes(Status.Pending)) {
+        return Status.Pending;
+    }
+    if (statusValues.every(val => val === Status.Success) ||
+        statusValues.length === 0) {
+        return Status.Success;
+    }
+    core.warning(`unknown statuses: ${JSON.stringify(statusByContext, null, 2)}`);
+    return Status.Unknown;
+}
+const MAX_ATTEMPTS = 100;
+const SLEEP_TIME_MS = 10000;
+function checkChecks(octokit, config, ignored) {
+    return __awaiter(this, void 0, void 0, function* () {
+        const checks = yield octokit.rest.checks.listForRef(config);
+        const statusByName = {};
+        checks.data.check_runs.forEach(checkStatus => {
+            var _a, _b;
+            if (shouldIgnoreCheck(ignored, checkStatus.name)) {
+                return;
+            }
+            const ts = (_a = checkStatus.completed_at) !== null && _a !== void 0 ? _a : checkStatus.started_at;
+            if (!ts) {
+                core.warning(`no completed_at or started_at for check ${checkStatus.name}`);
+                return;
+            }
+            const unixTs = new Date(ts).getTime();
+            const existing = statusByName[checkStatus.name];
+            if (!existing || existing[0] < unixTs) {
+                const newStatus = checkToStatus((_b = checkStatus.conclusion) !== null && _b !== void 0 ? _b : checkStatus.status);
+                statusByName[checkStatus.name] = [unixTs, newStatus];
+                core.info(`${existing ? 'updating' : 'found'} check ${checkStatus.name} with status ${newStatus}`);
+            }
+            else {
+                core.info(`check ${checkStatus.name} has superseding status, skipping...`);
+            }
+        });
+        const statusValues = Object.values(statusByName).map(x => x[1]);
+        if (statusValues.includes(Status.Failure)) {
+            return Status.Failure;
+        }
+        if (statusValues.includes(Status.Pending) || statusValues.length === 0) {
+            return Status.Pending;
+        }
+        if (statusValues.every(val => val === Status.Success)) {
+            return Status.Success;
+        }
+        core.warning(`Unknown checks: ${JSON.stringify(statusByName, null, 2)}`);
+        return Status.Unknown;
+    });
+}
+function checkStatuses(octokit, config, ignored) {
+    return __awaiter(this, void 0, void 0, function* () {
+        const statuses = yield octokit.rest.repos.getCombinedStatusForRef(config);
+        return combinedStatusToStatus(statuses.data, ignored);
+    });
+}
+function run() {
+    return __awaiter(this, void 0, void 0, function* () {
+        try {
+            const octokit = github.getOctokit(core.getInput('token'));
+            const owner = process.env['GITHUB_REPOSITORY_OWNER'];
+            if (!owner) {
+                throw new Error('`$GITHUB_REPOSITORY_OWNER` is not set!');
+            }
+            if (!process.env['GITHUB_REPOSITORY']) {
+                throw new Error('`$GITHUB_REPOSITORY` is not set!');
+            }
+            const repo = process.env['GITHUB_REPOSITORY'].split('/')[1];
+            const ref = core.getInput('commit') ||
+                process.env['GITHUB_HEAD_REF'] ||
+                process.env['GITHUB_SHA'];
+            if (!ref) {
+                throw new Error('None of `inputs.commit`, `$GITHUB_HEAD_REF`, or`$GITHUB_SHA` are set!');
+            }
+            const config = {
+                owner,
+                repo,
+                ref
+            };
+            const ignored = core.getInput('ignored_checks');
+            core.info(`checking statuses & checks for ${owner}/${repo}@${ref}...`);
+            for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
+                const [checks, statuses] = yield Promise.all([
+                    checkChecks(octokit, config, ignored),
+                    checkStatuses(octokit, config, ignored)
+                ]);
+                core.info(`attempt ${attempt}: checks=${checks}, statuses=${statuses}`);
+                if (checks === Status.Success && statuses === Status.Success) {
+                    core.info(`setting output \`success\` to 'true'`);
+                    core.setOutput('success', 'true');
+                    break;
+                }
+                else if (checks === Status.Failure || statuses === Status.Failure) {
+                    core.info(`setting output \`success\` to 'false'`);
+                    core.setOutput('success', 'false');
+                    break;
+                }
+                yield sleep(SLEEP_TIME_MS);
+            }
+        }
+        catch (error) {
+            if (error instanceof Error)
+                core.setFailed(error.message);
+        }
+    });
+}
+run();
+
+
+/***/ }),
+
 /***/ 7351:
 /***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
 
@@ -8599,245 +8838,6 @@ function wrappy (fn, cb) {
 
 /***/ }),
 
-/***/ 399:
-/***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
-
-"use strict";
-
-var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    var desc = Object.getOwnPropertyDescriptor(m, k);
-    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
-      desc = { enumerable: true, get: function() { return m[k]; } };
-    }
-    Object.defineProperty(o, k2, desc);
-}) : (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    o[k2] = m[k];
-}));
-var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
-    Object.defineProperty(o, "default", { enumerable: true, value: v });
-}) : function(o, v) {
-    o["default"] = v;
-});
-var __importStar = (this && this.__importStar) || function (mod) {
-    if (mod && mod.__esModule) return mod;
-    var result = {};
-    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
-    __setModuleDefault(result, mod);
-    return result;
-};
-var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
-    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
-    return new (P || (P = Promise))(function (resolve, reject) {
-        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
-        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
-        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
-        step((generator = generator.apply(thisArg, _arguments || [])).next());
-    });
-};
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-const core = __importStar(__nccwpck_require__(2186));
-const github = __importStar(__nccwpck_require__(5438));
-const process = __importStar(__nccwpck_require__(7282));
-function sleep(ms) {
-    return __awaiter(this, void 0, void 0, function* () {
-        return new Promise(resolve => {
-            setTimeout(() => resolve(), ms);
-        });
-    });
-}
-var Status;
-(function (Status) {
-    Status["Unknown"] = "unknown";
-    Status["Failure"] = "failure";
-    Status["Canceled"] = "canceled";
-    Status["Skipped"] = "skipped";
-    Status["Pending"] = "pending";
-    Status["Success"] = "success";
-})(Status || (Status = {}));
-function shouldIgnoreCheck(ignored, checkName) {
-    if (ignored === '') {
-        return false;
-    }
-    if (ignored.startsWith('/') && ignored.endsWith('/')) {
-        return new RegExp(ignored.slice(1, -1)).test(checkName);
-    }
-    return ignored.split(',').includes(checkName);
-}
-function checkToStatus(status) {
-    // todo: skipped? canceled?
-    switch (status) {
-        case 'success':
-        case 'neutral':
-            return Status.Success;
-        case 'failure':
-        case 'timed_out':
-            return Status.Failure;
-        case 'pending':
-        case 'action_required':
-        case 'queued':
-        case 'in_progress':
-            return Status.Pending;
-        case 'skipped':
-            return Status.Skipped;
-        case 'cancelled':
-            return Status.Canceled;
-        default:
-            core.warning(`unhandled check status: ${status}`);
-            return Status.Unknown;
-    }
-}
-function stringToStatus(status) {
-    // todo: skipped? canceled?
-    switch (status) {
-        case 'success':
-            return Status.Success;
-        case 'failure':
-            return Status.Failure;
-        case 'pending':
-            return Status.Pending;
-        default:
-            core.warning(`unhandled status: ${status}`);
-            return Status.Unknown;
-    }
-}
-function combinedStatusToStatus(status, ignored) {
-    const statusByContext = {};
-    status.statuses.forEach(simpleStatus => {
-        if (shouldIgnoreCheck(ignored, simpleStatus.context)) {
-            return;
-        }
-        const ts = new Date(simpleStatus.updated_at).getTime();
-        const existing = statusByContext[simpleStatus.context];
-        if (!existing || existing[0] < ts) {
-            const newStatus = stringToStatus(simpleStatus.state);
-            statusByContext[simpleStatus.context] = [
-                new Date(simpleStatus.updated_at).getTime(),
-                newStatus
-            ];
-            core.info(`${existing ? 'updating' : 'creating'} context ${simpleStatus.context} with status ${newStatus}`);
-        }
-        else {
-            core.info(`status with context ${simpleStatus.context} has superseding status, skipping...`);
-        }
-    });
-    const statusValues = Object.values(statusByContext).map(x => x[1]);
-    if (statusValues.includes(Status.Failure)) {
-        return Status.Failure;
-    }
-    if (statusValues.includes(Status.Pending)) {
-        return Status.Pending;
-    }
-    if (statusValues.every(val => val === Status.Success) ||
-        statusValues.length === 0) {
-        return Status.Success;
-    }
-    core.warning(`unknown statuses: ${JSON.stringify(statusByContext, null, 2)}`);
-    return Status.Unknown;
-}
-const MAX_ATTEMPTS = 100;
-const SLEEP_TIME_MS = 10000;
-function checkChecks(octokit, config, ignored) {
-    return __awaiter(this, void 0, void 0, function* () {
-        const checks = yield octokit.rest.checks.listForRef(config);
-        const statusByName = {};
-        checks.data.check_runs.forEach(checkStatus => {
-            var _a, _b;
-            if (shouldIgnoreCheck(ignored, checkStatus.name)) {
-                return;
-            }
-            const ts = (_a = checkStatus.completed_at) !== null && _a !== void 0 ? _a : checkStatus.started_at;
-            if (!ts) {
-                core.warning(`no completed_at or started_at for check ${checkStatus.name}`);
-                return;
-            }
-            const unixTs = new Date(ts).getTime();
-            const existing = statusByName[checkStatus.name];
-            if (!existing || existing[0] < unixTs) {
-                const newStatus = checkToStatus((_b = checkStatus.conclusion) !== null && _b !== void 0 ? _b : checkStatus.status);
-                statusByName[checkStatus.name] = [unixTs, newStatus];
-                core.info(`${existing ? 'updating' : 'found'} check ${checkStatus.name} with status ${newStatus}`);
-            }
-            else {
-                core.info(`check ${checkStatus.name} has superseding status, skipping...`);
-            }
-        });
-        const statusValues = Object.values(statusByName).map(x => x[1]);
-        if (statusValues.includes(Status.Failure)) {
-            return Status.Failure;
-        }
-        if (statusValues.includes(Status.Pending) || statusValues.length === 0) {
-            return Status.Pending;
-        }
-        if (statusValues.every(val => val === Status.Success)) {
-            return Status.Success;
-        }
-        core.warning(`Unknown checks: ${JSON.stringify(statusByName, null, 2)}`);
-        return Status.Unknown;
-    });
-}
-function checkStatuses(octokit, config, ignored) {
-    return __awaiter(this, void 0, void 0, function* () {
-        const statuses = yield octokit.rest.repos.getCombinedStatusForRef(config);
-        return combinedStatusToStatus(statuses.data, ignored);
-    });
-}
-function run() {
-    return __awaiter(this, void 0, void 0, function* () {
-        try {
-            const octokit = github.getOctokit(core.getInput('token'));
-            const owner = process.env['GITHUB_REPOSITORY_OWNER'];
-            if (!owner) {
-                throw new Error('`$GITHUB_REPOSITORY_OWNER` is not set!');
-            }
-            if (!process.env['GITHUB_REPOSITORY']) {
-                throw new Error('`$GITHUB_REPOSITORY` is not set!');
-            }
-            const repo = process.env['GITHUB_REPOSITORY'].split('/')[1];
-            const ref = core.getInput('commit') ||
-                process.env['GITHUB_HEAD_REF'] ||
-                process.env['GITHUB_SHA'];
-            if (!ref) {
-                throw new Error('None of `inputs.commit`, `$GITHUB_HEAD_REF`, or`$GITHUB_SHA` are set!');
-            }
-            const config = {
-                owner,
-                repo,
-                ref
-            };
-            const ignored = core.getInput('ignored_checks');
-            core.info(`checking statuses & checks for ${owner}/${repo}@${ref}...`);
-            for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
-                const [checks, statuses] = yield Promise.all([
-                    checkChecks(octokit, config, ignored),
-                    checkStatuses(octokit, config, ignored)
-                ]);
-                core.info(`attempt ${attempt}: checks=${checks}, statuses=${statuses}`);
-                if (checks === Status.Success && statuses === Status.Success) {
-                    core.info(`setting output \`success\` to 'true'`);
-                    core.setOutput('success', 'true');
-                    break;
-                }
-                else if (checks === Status.Failure || statuses === Status.Failure) {
-                    core.info(`setting output \`success\` to 'false'`);
-                    core.setOutput('success', 'false');
-                    break;
-                }
-                yield sleep(SLEEP_TIME_MS);
-            }
-        }
-        catch (error) {
-            if (error instanceof Error)
-                core.setFailed(error.message);
-        }
-    });
-}
-run();
-
-
-/***/ }),
-
 /***/ 2877:
 /***/ ((module) => {
 
@@ -9016,7 +9016,7 @@ module.exports = JSON.parse('[[[0,44],"disallowed_STD3_valid"],[[45,46],"valid"]
 /******/ 	// startup
 /******/ 	// Load entry module and return exports
 /******/ 	// This entry module is referenced by other modules so it can't be inlined
-/******/ 	var __webpack_exports__ = __nccwpck_require__(399);
+/******/ 	var __webpack_exports__ = __nccwpck_require__(3109);
 /******/ 	module.exports = __webpack_exports__;
 /******/ 	
 /******/ })()
