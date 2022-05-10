@@ -241,11 +241,11 @@ async function run(): Promise<void> {
       if (checks === Status.Success && statuses === Status.Success) {
         core.info(`setting output \`success\` to \`true\``);
         core.setOutput('success', true);
-        break;
+        return;
       } else if (checks === Status.Failure || statuses === Status.Failure) {
         core.info(`setting output \`success\` to \`false\``);
         core.setOutput('success', false);
-        break;
+        return;
       }
 
       await sleep(SLEEP_TIME_MS);
