@@ -3,10 +3,7 @@ module.exports = {
     'npm run format',
     'npm run lint',
     'rm -rf lib',
-    files => {
-      console.log(files);
-      return 'tsc';
-    },
+    _ => 'tsc',
     'npm run package',
     'git add dist'
   ],
