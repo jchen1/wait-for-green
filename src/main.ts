@@ -56,7 +56,7 @@ function checkToStatus(status: string): Status {
       return Status.Pending;
     case 'skipped':
       return Status.Skipped;
-    case 'cancelled':
+    case 'canceled':
       return Status.Canceled;
     default:
       core.warning(`unhandled check status: ${status}`);
