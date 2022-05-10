@@ -1,10 +1,10 @@
 module.exports = {
   'src/**/*.ts': [
-    // 'npm run format',
-    // 'npm run lint',
-    // 'rm -rf lib',
+    'npm run format',
+    'npm run lint',
+    'rm -rf lib',
     files => {
-      console.log('FILES', files);
+      console.log(files);
       return 'tsc';
     },
     'npm run package',
