@@ -2,8 +2,8 @@ module.exports = {
   'src/**/*.ts': [
     'npm run format',
     'npm run lint',
-    'rm -rf lib',
-    _ => 'tsc',
+    () => 'rm -rf lib',
+    () => 'npm run build',
     'npm run package',
     'git add dist'
   ],
