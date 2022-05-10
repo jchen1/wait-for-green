@@ -20,6 +20,10 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - uses: ./
+        name: wait-for-green
         with:
           token: '${{ secrets.GITHUB_TOKEN }}'
           ignored_checks: 'test'
+      - name: Fail if checks have failed
+        if: steps.wait-for-green.outputs.success != 'true'
+        run: echo "Status checks failed!" && exit 1

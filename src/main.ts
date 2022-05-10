@@ -228,7 +228,6 @@ async function run(): Promise<void> {
 
     core.info(`checking statuses & checks for ${owner}/${repo}@${ref}...`);
 
-    let success = false;
     for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
       const [checks, statuses] = await Promise.all([
         checkChecks(octokit, config, ignored),
@@ -237,18 +236,17 @@ async function run(): Promise<void> {
 
       core.info(`attempt ${attempt}: checks=${checks}, statuses=${statuses}`);
       if (checks === Status.Success && statuses === Status.Success) {
-        success = true;
+        core.info(`setting output \`success\` to 'true'`);
+        core.setOutput('success', 'true');
         break;
       } else if (checks === Status.Failure || statuses === Status.Failure) {
-        success = false;
+        core.info(`setting output \`success\` to 'false'`);
+        core.setOutput('success', 'false');
         break;
       }
 
       await sleep(SLEEP_TIME_MS);
     }
-
-    core.info(`setting output \`success\` to ${success}`);
-    core.setOutput('success', success);
   } catch (error) {
     if (error instanceof Error) core.setFailed(error.message);
   }
