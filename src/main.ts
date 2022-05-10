@@ -239,17 +239,20 @@ async function run(): Promise<void> {
 
       core.info(`attempt ${attempt}: checks=${checks}, statuses=${statuses}`);
       if (checks === Status.Success && statuses === Status.Success) {
-        core.info(`setting output \`success\` to 'true'`);
-        core.setOutput('success', 'true');
+        core.info(`setting output \`success\` to \`true\``);
+        core.setOutput('success', true);
         break;
       } else if (checks === Status.Failure || statuses === Status.Failure) {
-        core.info(`setting output \`success\` to 'false'`);
-        core.setOutput('success', 'false');
+        core.info(`setting output \`success\` to \`false\``);
+        core.setOutput('success', false);
         break;
       }
 
       await sleep(SLEEP_TIME_MS);
     }
+
+    core.warning('timed out waiting for checks to complete');
+    core.setOutput('success', false);
   } catch (error) {
     if (error instanceof Error) core.setFailed(error.message);
   }
