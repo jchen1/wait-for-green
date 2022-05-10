@@ -57,6 +57,7 @@ function checkToStatus(status: string): Status {
     case 'skipped':
       return Status.Skipped;
     case 'canceled':
+    case 'cancelled':
       return Status.Canceled;
     default:
       core.warning(`unhandled check status: ${status}`);
@@ -110,14 +111,19 @@ function combinedStatusToStatus(
   });
 
   const statusValues = Object.values(statusByContext).map(x => x[1]);
-  if (statusValues.includes(Status.Failure)) {
+  if (
+    statusValues.includes(Status.Failure) ||
+    statusValues.includes(Status.Canceled)
+  ) {
     return Status.Failure;
   }
   if (statusValues.includes(Status.Pending)) {
     return Status.Pending;
   }
   if (
-    statusValues.every(val => val === Status.Success) ||
+    statusValues.every(
+      val => val === Status.Success || val === Status.Skipped
+    ) ||
     statusValues.length === 0
   ) {
     return Status.Success;
@@ -168,13 +174,18 @@ async function checkChecks(
   });
 
   const statusValues = Object.values(statusByName).map(x => x[1]);
-  if (statusValues.includes(Status.Failure)) {
+  if (
+    statusValues.includes(Status.Failure) ||
+    statusValues.includes(Status.Canceled)
+  ) {
     return Status.Failure;
   }
   if (statusValues.includes(Status.Pending) || statusValues.length === 0) {
     return Status.Pending;
   }
-  if (statusValues.every(val => val === Status.Success)) {
+  if (
+    statusValues.every(val => val === Status.Success || val === Status.Skipped)
+  ) {
     return Status.Success;
   }
 
