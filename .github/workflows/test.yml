@@ -15,6 +15,10 @@ jobs:
           npm install
       - run: |
           npm run all
+      - run: |
+          if [ "$RANDOM % 2" -ne 0 ]; then
+            echo "uh oh!!!" && exit 1
+          fi  
   test: # make sure the action works on a clean machine without building
     runs-on: ubuntu-latest
     steps:

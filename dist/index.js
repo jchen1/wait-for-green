@@ -8726,10 +8726,11 @@ function combinedStatusToStatus(status, ignored) {
     if (statusValues.includes(Status.Failure)) {
         return Status.Failure;
     }
-    if (statusValues.includes(Status.Pending) || statusValues.length === 0) {
+    if (statusValues.includes(Status.Pending)) {
         return Status.Pending;
     }
-    if (statusValues.every(val => val === Status.Success)) {
+    if (statusValues.every(val => val === Status.Success) ||
+        statusValues.length === 0) {
         return Status.Success;
     }
     core.warning(`unknown statuses: ${JSON.stringify(statusByContext, null, 2)}`);
@@ -8800,7 +8801,6 @@ function run() {
             if (!ref) {
                 throw new Error('None of `inputs.commit`, `$GITHUB_HEAD_REF`, or`$GITHUB_SHA` are set!');
             }
-            // todo: ignore certain actions?
             const config = {
                 owner,
                 repo,

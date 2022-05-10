@@ -114,10 +114,13 @@ function combinedStatusToStatus(
   if (statusValues.includes(Status.Failure)) {
     return Status.Failure;
   }
-  if (statusValues.includes(Status.Pending) || statusValues.length === 0) {
+  if (statusValues.includes(Status.Pending)) {
     return Status.Pending;
   }
-  if (statusValues.every(val => val === Status.Success)) {
+  if (
+    statusValues.every(val => val === Status.Success) ||
+    statusValues.length === 0
+  ) {
     return Status.Success;
   }
 
@@ -217,7 +220,6 @@ async function run(): Promise<void> {
       );
     }
 
-    // todo: ignore certain actions?
     const config: Config = {
       owner,
       repo,
