@@ -8757,10 +8757,10 @@ function checkChecks(octokit, config, ignored) {
             if (!existing || existing[0] < unixTs) {
                 const newStatus = checkToStatus((_b = checkStatus.conclusion) !== null && _b !== void 0 ? _b : checkStatus.status);
                 statusByName[checkStatus.name] = [unixTs, newStatus];
-                core.info(`${existing ? 'updating' : 'creating'} context ${checkStatus.name} with status ${newStatus}`);
+                core.info(`${existing ? 'updating' : 'found'} check ${checkStatus.name} with status ${newStatus}`);
             }
             else {
-                core.info(`status with context ${checkStatus.name} has superseding status, skipping...`);
+                core.info(`check ${checkStatus.name} has superseding status, skipping...`);
             }
         });
         const statusValues = Object.values(statusByName).map(x => x[1]);

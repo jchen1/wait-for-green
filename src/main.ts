@@ -159,13 +159,13 @@ async function checkChecks(
       );
       statusByName[checkStatus.name] = [unixTs, newStatus];
       core.info(
-        `${existing ? 'updating' : 'creating'} context ${
+        `${existing ? 'updating' : 'found'} check ${
           checkStatus.name
         } with status ${newStatus}`
       );
     } else {
       core.info(
-        `status with context ${checkStatus.name} has superseding status, skipping...`
+        `check ${checkStatus.name} has superseding status, skipping...`
       );
     }
   });
