@@ -254,7 +254,9 @@ async function run(): Promise<void> {
     core.warning('timed out waiting for checks to complete');
     core.setOutput('success', false);
   } catch (error) {
-    if (error instanceof Error) core.setFailed(error.message);
+    if (error instanceof Error) {
+      core.setFailed(error.message);
+    }
   }
 }
 

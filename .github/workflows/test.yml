@@ -24,7 +24,7 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - uses: ./
-        name: wait-for-green
+        id: wait-for-green
         with:
           token: '${{ secrets.GITHUB_TOKEN }}'
           ignored_checks: 'test'
