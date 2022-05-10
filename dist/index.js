@@ -151,7 +151,7 @@ function checkChecks(octokit, config, ignored) {
             }
             const ts = (_a = checkStatus.completed_at) !== null && _a !== void 0 ? _a : checkStatus.started_at;
             if (!ts) {
-                core.warning(`no completed_at or started_at for check ${checkStatus.name}`);
+                core.warning(`no completed_at or started_at for check ${checkStatus.name}!`);
                 return;
             }
             const unixTs = new Date(ts).getTime();

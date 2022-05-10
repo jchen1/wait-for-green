@@ -147,7 +147,7 @@ async function checkChecks(
     const ts = checkStatus.completed_at ?? checkStatus.started_at;
     if (!ts) {
       core.warning(
-        `no completed_at or started_at for check ${checkStatus.name}`
+        `no completed_at or started_at for check ${checkStatus.name}!`
       );
       return;
     }
