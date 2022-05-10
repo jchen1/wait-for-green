@@ -142,13 +142,19 @@ async function checkChecks(
     }
 
     const ts = checkStatus.completed_at ?? checkStatus.started_at;
-    const unixTs = ts ? new Date(ts).getTime() : null;
+    if (!ts) {
+      core.warning(
+        `no completed_at or started_at for check ${checkStatus.name}`
+      );
+      return;
+    }
+    const unixTs = new Date(ts).getTime();
     const existing = statusByName[checkStatus.name];
-    if (!existing || (unixTs && existing[0] < unixTs)) {
+    if (!existing || existing[0] < unixTs) {
       const newStatus = checkToStatus(
         checkStatus.conclusion ?? checkStatus.status
       );
-      statusByName[checkStatus.name] = [unixTs!, newStatus];
+      statusByName[checkStatus.name] = [unixTs, newStatus];
       core.info(
         `${existing ? 'updating' : 'creating'} context ${
           checkStatus.name

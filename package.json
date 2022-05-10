@@ -5,7 +5,8 @@
   "description": "GitHub Action to wait for commit statuses and checks to become green",
   "main": "lib/main.js",
   "scripts": {
-    "build": "tsc --noEmit",
+    "build": "tsc",
+    "typecheck": "tsc --noEmit",
     "format": "prettier --write '**/*.ts'",
     "format-check": "prettier --check '**/*.ts'",
     "lint": "eslint src/**/*.ts",
@@ -48,7 +49,7 @@
   },
   "lint-staged": {
     "src/**/*.ts": [
-      "npm run build",
+      "npm run typecheck",
       "npm run format",
       "npm run lint",
       "npm run package"
