@@ -65,7 +65,6 @@ function checkToStatus(status: string): Status {
 }
 
 function stringToStatus(status: string): Status {
-  // todo: skipped? canceled?
   switch (status) {
     case 'success':
       return Status.Success;

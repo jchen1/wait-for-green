@@ -91,7 +91,6 @@ function checkToStatus(status) {
     }
 }
 function stringToStatus(status) {
-    // todo: skipped? canceled?
     switch (status) {
         case 'success':
             return Status.Success;
