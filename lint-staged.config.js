@@ -1,9 +1,10 @@
 module.exports = {
   'src/**/*.ts': [
-    () => 'tsc -p tsconfig.json',
     'npm run format',
     'npm run lint',
-    'npm run package'
+    () => 'tsc -p tsconfig.json',
+    'npm run package',
+    'git add dist'
   ],
   '__tests__/**/*.ts': ['npm run format']
 };

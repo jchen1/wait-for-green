@@ -8747,9 +8747,13 @@ function checkChecks(octokit, config, ignored) {
                 return;
             }
             const ts = (_a = checkStatus.completed_at) !== null && _a !== void 0 ? _a : checkStatus.started_at;
-            const unixTs = ts ? new Date(ts).getTime() : null;
+            if (!ts) {
+                core.warning(`no completed_at or started_at for check ${checkStatus.name}`);
+                return;
+            }
+            const unixTs = new Date(ts).getTime();
             const existing = statusByName[checkStatus.name];
-            if (!existing || (unixTs && existing[0] < unixTs)) {
+            if (!existing || existing[0] < unixTs) {
                 const newStatus = checkToStatus((_b = checkStatus.conclusion) !== null && _b !== void 0 ? _b : checkStatus.status);
                 statusByName[checkStatus.name] = [unixTs, newStatus];
                 core.info(`${existing ? 'updating' : 'creating'} context ${checkStatus.name} with status ${newStatus}`);
