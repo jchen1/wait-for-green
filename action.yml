@@ -7,7 +7,10 @@ inputs:
     description: 'Likely secrets.GITHUB_TOKEN.'
   commit:
     required: false
-    description: 'Commit hash to check. Defaults to $GITHUB_SHA.'
+    description: 'Commit hash to check. Defaults to $GITHUB_HEAD_REF ?? $GITHUB_SHA.'
+  ignored_checks:
+    required: false
+    description: 'Either a comma-separated list of check/status names to ignore or a regex wrapped in /.../.'
 outputs:
   success:
     description: '"true" if all statuses are successful or skipped and "false" otherwise'

@@ -6,6 +6,7 @@
   "main": "lib/main.js",
   "scripts": {
     "build": "tsc",
+    "typecheck": "tsc --noEmit",
     "format": "prettier --write '**/*.ts'",
     "format-check": "prettier --check '**/*.ts'",
     "lint": "eslint src/**/*.ts",
@@ -26,34 +27,24 @@
   "author": "",
   "license": "MIT",
   "dependencies": {
-    "@actions/core": "^1.6.0",
-    "@actions/github": "^5.0.1"
+    "@actions/core": "^1.8.0",
+    "@actions/github": "^5.0.1",
+    "lodash": "^4.17.21"
   },
   "devDependencies": {
     "@octokit/types": "^6.34.0",
     "@types/node": "^16.11.27",
-    "@typescript-eslint/parser": "^5.20.0",
+    "@typescript-eslint/parser": "^5.23.0",
     "@vercel/ncc": "^0.33.4",
-    "eslint": "^8.13.0",
+    "eslint": "^8.15.0",
     "eslint-plugin-github": "^4.3.6",
-    "eslint-plugin-jest": "^26.1.4",
-    "husky": "^7.0.4",
-    "jest": "^27.5.1",
+    "eslint-plugin-jest": "^26.1.5",
+    "husky": "^8.0.1",
+    "jest": "^28.1.0",
     "js-yaml": "^4.1.0",
-    "lint-staged": "^12.4.0",
+    "lint-staged": "^12.4.1",
     "prettier": "^2.6.2",
-    "ts-jest": "^27.1.4",
-    "typescript": "^4.6.3"
-  },
-  "lint-staged": {
-    "src/**/*.ts": [
-      "npm run format",
-      "npm run lint",
-      "npm run build",
-      "npm run package"
-    ],
-    "__tests__/**/*.ts": [
-      "npm run format"
-    ]
+    "ts-jest": "^28.0.2",
+    "typescript": "^4.6.4"
   }
 }

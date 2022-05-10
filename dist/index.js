@@ -42,18 +42,146 @@ Object.defineProperty(exports, "__esModule", ({ value: true }));
 const core = __importStar(__nccwpck_require__(2186));
 const github = __importStar(__nccwpck_require__(5438));
 const process = __importStar(__nccwpck_require__(7282));
-function checkChecks(octokit, config) {
+function sleep(ms) {
     return __awaiter(this, void 0, void 0, function* () {
-        const checks = yield octokit.rest.checks.listForRef(config);
-        core.info(JSON.stringify(checks, null, 2));
-        return true;
+        return new Promise(resolve => {
+            setTimeout(() => resolve(), ms);
+        });
     });
 }
-function checkStatuses(octokit, config) {
+var Status;
+(function (Status) {
+    Status["Unknown"] = "unknown";
+    Status["Failure"] = "failure";
+    Status["Canceled"] = "canceled";
+    Status["Skipped"] = "skipped";
+    Status["Pending"] = "pending";
+    Status["Success"] = "success";
+})(Status || (Status = {}));
+function shouldIgnoreCheck(ignored, checkName) {
+    if (ignored === '') {
+        return false;
+    }
+    if (ignored.startsWith('/') && ignored.endsWith('/')) {
+        return new RegExp(ignored.slice(1, -1)).test(checkName);
+    }
+    return ignored.split(',').includes(checkName);
+}
+function checkToStatus(status) {
+    // todo: skipped? canceled?
+    switch (status) {
+        case 'success':
+        case 'neutral':
+            return Status.Success;
+        case 'failure':
+        case 'timed_out':
+            return Status.Failure;
+        case 'pending':
+        case 'action_required':
+        case 'queued':
+        case 'in_progress':
+            return Status.Pending;
+        case 'skipped':
+            return Status.Skipped;
+        case 'cancelled':
+            return Status.Canceled;
+        default:
+            core.warning(`unhandled check status: ${status}`);
+            return Status.Unknown;
+    }
+}
+function stringToStatus(status) {
+    switch (status) {
+        case 'success':
+            return Status.Success;
+        case 'failure':
+            return Status.Failure;
+        case 'pending':
+            return Status.Pending;
+        default:
+            core.warning(`unhandled status: ${status}`);
+            return Status.Unknown;
+    }
+}
+function combinedStatusToStatus(status, ignored) {
+    const statusByContext = {};
+    status.statuses.forEach(simpleStatus => {
+        if (shouldIgnoreCheck(ignored, simpleStatus.context)) {
+            return;
+        }
+        const ts = new Date(simpleStatus.updated_at).getTime();
+        const existing = statusByContext[simpleStatus.context];
+        if (!existing || existing[0] < ts) {
+            const newStatus = stringToStatus(simpleStatus.state);
+            statusByContext[simpleStatus.context] = [
+                new Date(simpleStatus.updated_at).getTime(),
+                newStatus
+            ];
+            core.info(`${existing ? 'updating' : 'creating'} context ${simpleStatus.context} with status ${newStatus}`);
+        }
+        else {
+            core.info(`status with context ${simpleStatus.context} has superseding status, skipping...`);
+        }
+    });
+    const statusValues = Object.values(statusByContext).map(x => x[1]);
+    if (statusValues.includes(Status.Failure)) {
+        return Status.Failure;
+    }
+    if (statusValues.includes(Status.Pending)) {
+        return Status.Pending;
+    }
+    if (statusValues.every(val => val === Status.Success) ||
+        statusValues.length === 0) {
+        return Status.Success;
+    }
+    core.warning(`unknown statuses: ${JSON.stringify(statusByContext, null, 2)}`);
+    return Status.Unknown;
+}
+const MAX_ATTEMPTS = 100;
+const SLEEP_TIME_MS = 10000;
+function checkChecks(octokit, config, ignored) {
+    return __awaiter(this, void 0, void 0, function* () {
+        const checks = yield octokit.rest.checks.listForRef(config);
+        const statusByName = {};
+        checks.data.check_runs.forEach(checkStatus => {
+            var _a, _b;
+            if (shouldIgnoreCheck(ignored, checkStatus.name)) {
+                return;
+            }
+            const ts = (_a = checkStatus.completed_at) !== null && _a !== void 0 ? _a : checkStatus.started_at;
+            if (!ts) {
+                core.warning(`no completed_at or started_at for check ${checkStatus.name}!`);
+                return;
+            }
+            const unixTs = new Date(ts).getTime();
+            const existing = statusByName[checkStatus.name];
+            if (!existing || existing[0] < unixTs) {
+                const newStatus = checkToStatus((_b = checkStatus.conclusion) !== null && _b !== void 0 ? _b : checkStatus.status);
+                statusByName[checkStatus.name] = [unixTs, newStatus];
+                core.info(`${existing ? 'updating' : 'found'} check ${checkStatus.name} with status ${newStatus}`);
+            }
+            else {
+                core.info(`check ${checkStatus.name} has superseding status, skipping...`);
+            }
+        });
+        const statusValues = Object.values(statusByName).map(x => x[1]);
+        if (statusValues.includes(Status.Failure)) {
+            return Status.Failure;
+        }
+        if (statusValues.includes(Status.Pending) || statusValues.length === 0) {
+            return Status.Pending;
+        }
+        if (statusValues.every(val => val === Status.Success)) {
+            return Status.Success;
+        }
+        core.warning(`Unknown checks: ${JSON.stringify(statusByName, null, 2)}`);
+        return Status.Unknown;
+    });
+}
+function checkStatuses(octokit, config, ignored) {
     return __awaiter(this, void 0, void 0, function* () {
         const statuses = yield octokit.rest.repos.getCombinedStatusForRef(config);
-        core.info(JSON.stringify(statuses, null, 2));
-        return true;
+        return combinedStatusToStatus(statuses.data, ignored);
     });
 }
 function run() {
@@ -68,24 +196,44 @@ function run() {
                 throw new Error('`$GITHUB_REPOSITORY` is not set!');
             }
             const repo = process.env['GITHUB_REPOSITORY'].split('/')[1];
-            const ref = core.getInput('commit') || process.env['GITHUB_SHA'];
+            const ref = core.getInput('commit') ||
+                process.env['GITHUB_HEAD_REF'] ||
+                process.env['GITHUB_SHA'];
             if (!ref) {
-                throw new Error('Neither `inputs.commit` nor `$GITHUB_SHA` are set!');
+                throw new Error('None of `inputs.commit`, `$GITHUB_HEAD_REF`, or`$GITHUB_SHA` are set!');
             }
             const config = {
                 owner,
                 repo,
                 ref
             };
-            yield Promise.all([
-                checkChecks(octokit, config),
-                checkStatuses(octokit, config)
-            ]);
-            core.setOutput('success', true);
+            const ignored = core.getInput('ignored_checks');
+            core.info(`checking statuses & checks for ${owner}/${repo}@${ref}...`);
+            for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
+                const [checks, statuses] = yield Promise.all([
+                    checkChecks(octokit, config, ignored),
+                    checkStatuses(octokit, config, ignored)
+                ]);
+                core.info(`attempt ${attempt}: checks=${checks}, statuses=${statuses}`);
+                if (checks === Status.Success && statuses === Status.Success) {
+                    core.info(`setting output \`success\` to \`true\``);
+                    core.setOutput('success', true);
+                    return;
+                }
+                else if (checks === Status.Failure || statuses === Status.Failure) {
+                    core.info(`setting output \`success\` to \`false\``);
+                    core.setOutput('success', false);
+                    return;
+                }
+                yield sleep(SLEEP_TIME_MS);
+            }
+            core.warning('timed out waiting for checks to complete');
+            core.setOutput('success', false);
         }
         catch (error) {
-            if (error instanceof Error)
+            if (error instanceof Error) {
                 core.setFailed(error.message);
+            }
         }
     });
 }
@@ -508,6 +656,16 @@ function getIDToken(aud) {
     });
 }
 exports.getIDToken = getIDToken;
+/**
+ * Summary exports
+ */
+var summary_1 = __nccwpck_require__(1327);
+Object.defineProperty(exports, "summary", ({ enumerable: true, get: function () { return summary_1.summary; } }));
+/**
+ * @deprecated use core.summary
+ */
+var summary_2 = __nccwpck_require__(1327);
+Object.defineProperty(exports, "markdownSummary", ({ enumerable: true, get: function () { return summary_2.markdownSummary; } }));
 //# sourceMappingURL=core.js.map
 
 /***/ }),
@@ -642,6 +800,296 @@ class OidcClient {
 }
 exports.OidcClient = OidcClient;
 //# sourceMappingURL=oidc-utils.js.map
+
+/***/ }),
+
+/***/ 1327:
+/***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
+
+"use strict";
+
+var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.summary = exports.markdownSummary = exports.SUMMARY_DOCS_URL = exports.SUMMARY_ENV_VAR = void 0;
+const os_1 = __nccwpck_require__(2037);
+const fs_1 = __nccwpck_require__(7147);
+const { access, appendFile, writeFile } = fs_1.promises;
+exports.SUMMARY_ENV_VAR = 'GITHUB_STEP_SUMMARY';
+exports.SUMMARY_DOCS_URL = 'https://docs.github.com/actions/using-workflows/workflow-commands-for-github-actions#adding-a-job-summary';
+class Summary {
+    constructor() {
+        this._buffer = '';
+    }
+    /**
+     * Finds the summary file path from the environment, rejects if env var is not found or file does not exist
+     * Also checks r/w permissions.
+     *
+     * @returns step summary file path
+     */
+    filePath() {
+        return __awaiter(this, void 0, void 0, function* () {
+            if (this._filePath) {
+                return this._filePath;
+            }
+            const pathFromEnv = process.env[exports.SUMMARY_ENV_VAR];
+            if (!pathFromEnv) {
+                throw new Error(`Unable to find environment variable for $${exports.SUMMARY_ENV_VAR}. Check if your runtime environment supports job summaries.`);
+            }
+            try {
+                yield access(pathFromEnv, fs_1.constants.R_OK | fs_1.constants.W_OK);
+            }
+            catch (_a) {
+                throw new Error(`Unable to access summary file: '${pathFromEnv}'. Check if the file has correct read/write permissions.`);
+            }
+            this._filePath = pathFromEnv;
+            return this._filePath;
+        });
+    }
+    /**
+     * Wraps content in an HTML tag, adding any HTML attributes
+     *
+     * @param {string} tag HTML tag to wrap
+     * @param {string | null} content content within the tag
+     * @param {[attribute: string]: string} attrs key-value list of HTML attributes to add
+     *
+     * @returns {string} content wrapped in HTML element
+     */
+    wrap(tag, content, attrs = {}) {
+        const htmlAttrs = Object.entries(attrs)
+            .map(([key, value]) => ` ${key}="${value}"`)
+            .join('');
+        if (!content) {
+            return `<${tag}${htmlAttrs}>`;
+        }
+        return `<${tag}${htmlAttrs}>${content}</${tag}>`;
+    }
+    /**
+     * Writes text in the buffer to the summary buffer file and empties buffer. Will append by default.
+     *
+     * @param {SummaryWriteOptions} [options] (optional) options for write operation
+     *
+     * @returns {Promise<Summary>} summary instance
+     */
+    write(options) {
+        return __awaiter(this, void 0, void 0, function* () {
+            const overwrite = !!(options === null || options === void 0 ? void 0 : options.overwrite);
+            const filePath = yield this.filePath();
+            const writeFunc = overwrite ? writeFile : appendFile;
+            yield writeFunc(filePath, this._buffer, { encoding: 'utf8' });
+            return this.emptyBuffer();
+        });
+    }
+    /**
+     * Clears the summary buffer and wipes the summary file
+     *
+     * @returns {Summary} summary instance
+     */
+    clear() {
+        return __awaiter(this, void 0, void 0, function* () {
+            return this.emptyBuffer().write({ overwrite: true });
+        });
+    }
+    /**
+     * Returns the current summary buffer as a string
+     *
+     * @returns {string} string of summary buffer
+     */
+    stringify() {
+        return this._buffer;
+    }
+    /**
+     * If the summary buffer is empty
+     *
+     * @returns {boolen} true if the buffer is empty
+     */
+    isEmptyBuffer() {
+        return this._buffer.length === 0;
+    }
+    /**
+     * Resets the summary buffer without writing to summary file
+     *
+     * @returns {Summary} summary instance
+     */
+    emptyBuffer() {
+        this._buffer = '';
+        return this;
+    }
+    /**
+     * Adds raw text to the summary buffer
+     *
+     * @param {string} text content to add
+     * @param {boolean} [addEOL=false] (optional) append an EOL to the raw text (default: false)
+     *
+     * @returns {Summary} summary instance
+     */
+    addRaw(text, addEOL = false) {
+        this._buffer += text;
+        return addEOL ? this.addEOL() : this;
+    }
+    /**
+     * Adds the operating system-specific end-of-line marker to the buffer
+     *
+     * @returns {Summary} summary instance
+     */
+    addEOL() {
+        return this.addRaw(os_1.EOL);
+    }
+    /**
+     * Adds an HTML codeblock to the summary buffer
+     *
+     * @param {string} code content to render within fenced code block
+     * @param {string} lang (optional) language to syntax highlight code
+     *
+     * @returns {Summary} summary instance
+     */
+    addCodeBlock(code, lang) {
+        const attrs = Object.assign({}, (lang && { lang }));
+        const element = this.wrap('pre', this.wrap('code', code), attrs);
+        return this.addRaw(element).addEOL();
+    }
+    /**
+     * Adds an HTML list to the summary buffer
+     *
+     * @param {string[]} items list of items to render
+     * @param {boolean} [ordered=false] (optional) if the rendered list should be ordered or not (default: false)
+     *
+     * @returns {Summary} summary instance
+     */
+    addList(items, ordered = false) {
+        const tag = ordered ? 'ol' : 'ul';
+        const listItems = items.map(item => this.wrap('li', item)).join('');
+        const element = this.wrap(tag, listItems);
+        return this.addRaw(element).addEOL();
+    }
+    /**
+     * Adds an HTML table to the summary buffer
+     *
+     * @param {SummaryTableCell[]} rows table rows
+     *
+     * @returns {Summary} summary instance
+     */
+    addTable(rows) {
+        const tableBody = rows
+            .map(row => {
+            const cells = row
+                .map(cell => {
+                if (typeof cell === 'string') {
+                    return this.wrap('td', cell);
+                }
+                const { header, data, colspan, rowspan } = cell;
+                const tag = header ? 'th' : 'td';
+                const attrs = Object.assign(Object.assign({}, (colspan && { colspan })), (rowspan && { rowspan }));
+                return this.wrap(tag, data, attrs);
+            })
+                .join('');
+            return this.wrap('tr', cells);
+        })
+            .join('');
+        const element = this.wrap('table', tableBody);
+        return this.addRaw(element).addEOL();
+    }
+    /**
+     * Adds a collapsable HTML details element to the summary buffer
+     *
+     * @param {string} label text for the closed state
+     * @param {string} content collapsable content
+     *
+     * @returns {Summary} summary instance
+     */
+    addDetails(label, content) {
+        const element = this.wrap('details', this.wrap('summary', label) + content);
+        return this.addRaw(element).addEOL();
+    }
+    /**
+     * Adds an HTML image tag to the summary buffer
+     *
+     * @param {string} src path to the image you to embed
+     * @param {string} alt text description of the image
+     * @param {SummaryImageOptions} options (optional) addition image attributes
+     *
+     * @returns {Summary} summary instance
+     */
+    addImage(src, alt, options) {
+        const { width, height } = options || {};
+        const attrs = Object.assign(Object.assign({}, (width && { width })), (height && { height }));
+        const element = this.wrap('img', null, Object.assign({ src, alt }, attrs));
+        return this.addRaw(element).addEOL();
+    }
+    /**
+     * Adds an HTML section heading element
+     *
+     * @param {string} text heading text
+     * @param {number | string} [level=1] (optional) the heading level, default: 1
+     *
+     * @returns {Summary} summary instance
+     */
+    addHeading(text, level) {
+        const tag = `h${level}`;
+        const allowedTag = ['h1', 'h2', 'h3', 'h4', 'h5', 'h6'].includes(tag)
+            ? tag
+            : 'h1';
+        const element = this.wrap(allowedTag, text);
+        return this.addRaw(element).addEOL();
+    }
+    /**
+     * Adds an HTML thematic break (<hr>) to the summary buffer
+     *
+     * @returns {Summary} summary instance
+     */
+    addSeparator() {
+        const element = this.wrap('hr', null);
+        return this.addRaw(element).addEOL();
+    }
+    /**
+     * Adds an HTML line break (<br>) to the summary buffer
+     *
+     * @returns {Summary} summary instance
+     */
+    addBreak() {
+        const element = this.wrap('br', null);
+        return this.addRaw(element).addEOL();
+    }
+    /**
+     * Adds an HTML blockquote to the summary buffer
+     *
+     * @param {string} text quote text
+     * @param {string} cite (optional) citation url
+     *
+     * @returns {Summary} summary instance
+     */
+    addQuote(text, cite) {
+        const attrs = Object.assign({}, (cite && { cite }));
+        const element = this.wrap('blockquote', text, attrs);
+        return this.addRaw(element).addEOL();
+    }
+    /**
+     * Adds an HTML anchor tag to the summary buffer
+     *
+     * @param {string} text link text/content
+     * @param {string} href hyperlink
+     *
+     * @returns {Summary} summary instance
+     */
+    addLink(text, href) {
+        const element = this.wrap('a', text, { href });
+        return this.addRaw(element).addEOL();
+    }
+}
+const _summary = new Summary();
+/**
+ * @deprecated use `core.summary`
+ */
+exports.markdownSummary = _summary;
+exports.summary = _summary;
+//# sourceMappingURL=summary.js.map
 
 /***/ }),
 
