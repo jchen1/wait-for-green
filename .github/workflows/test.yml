@@ -16,7 +16,7 @@ jobs:
       - run: |
           npm run all
       - run: |
-          if [ "$RANDOM % 2" -ne 0 ]; then
+          if [ "$(( RANDOM % 2 ))" -ne 0 ]; then
             echo "uh oh!!!" && exit 1
           fi  
   test: # make sure the action works on a clean machine without building
@@ -30,4 +30,4 @@ jobs:
           ignored_checks: 'test'
       - name: Fail if checks have failed
         if: steps.wait-for-green.outputs.success != 'true'
-        run: echo "Status checks failed!" && exit 1
+        run: echo "Status checks failed with status ${{ steps.wait-for-green.outputs.success }}!" && exit 1
