@@ -1,7 +1,5 @@
 name: 'Wait for Green'
 description: 'Wait for commit statuses and checks to become green'
-icon: check-circle
-color: green
 author: 'Jeff Chen'
 inputs:
   token:
@@ -19,3 +17,6 @@ outputs:
 runs:
   using: 'node16'
   main: 'dist/index.js'
+branding:
+  icon: check-circle
+  color: green
