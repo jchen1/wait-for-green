@@ -137,8 +137,6 @@ function combinedStatusToStatus(status, ignored) {
     core.warning(`unknown statuses: ${JSON.stringify(statusByContext, null, 2)}`);
     return Status.Unknown;
 }
-const MAX_ATTEMPTS = 100;
-const SLEEP_TIME_MS = 10000;
 function checkChecks(octokit, config, ignored) {
     return __awaiter(this, void 0, void 0, function* () {
         const checks = yield octokit.rest.checks.listForRef(config);
@@ -208,8 +206,16 @@ function run() {
                 ref
             };
             const ignored = core.getInput('ignored_checks');
+            const checkIntervalMs = 1000 * parseInt(core.getInput('check_interval') || '10', 10);
+            const maxAttempts = parseInt(core.getInput('max_attempts') || '1000', 10);
+            if (isNaN(checkIntervalMs)) {
+                throw new Error(`check_interval is not a number: ${core.getInput('check_interval')}`);
+            }
+            if (isNaN(maxAttempts)) {
+                throw new Error(`max_attempts is not a number: ${core.getInput('max_attempts')}`);
+            }
             core.info(`checking statuses & checks for ${owner}/${repo}@${ref}...`);
-            for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
+            for (let attempt = 0; attempt < maxAttempts; attempt++) {
                 const [checks, statuses] = yield Promise.all([
                     checkChecks(octokit, config, ignored),
                     checkStatuses(octokit, config, ignored)
@@ -225,7 +231,7 @@ function run() {
                     core.setOutput('success', false);
                     return;
                 }
-                yield sleep(SLEEP_TIME_MS);
+                yield sleep(checkIntervalMs);
             }
             core.warning('timed out waiting for checks to complete');
             core.setOutput('success', false);

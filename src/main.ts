@@ -127,9 +127,6 @@ function combinedStatusToStatus(
   return Status.Unknown;
 }
 
-const MAX_ATTEMPTS = 100;
-const SLEEP_TIME_MS = 10000;
-
 async function checkChecks(
   octokit: Octokit,
   config: Config,
@@ -227,10 +224,25 @@ async function run(): Promise<void> {
     };
 
     const ignored = core.getInput('ignored_checks');
+    const checkIntervalMs =
+      1000 * parseInt(core.getInput('check_interval') || '10', 10);
+    const maxAttempts = parseInt(core.getInput('max_attempts') || '1000', 10);
+
+    if (isNaN(checkIntervalMs)) {
+      throw new Error(
+        `check_interval is not a number: ${core.getInput('check_interval')}`
+      );
+    }
+
+    if (isNaN(maxAttempts)) {
+      throw new Error(
+        `max_attempts is not a number: ${core.getInput('max_attempts')}`
+      );
+    }
 
     core.info(`checking statuses & checks for ${owner}/${repo}@${ref}...`);
 
-    for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
+    for (let attempt = 0; attempt < maxAttempts; attempt++) {
       const [checks, statuses] = await Promise.all([
         checkChecks(octokit, config, ignored),
         checkStatuses(octokit, config, ignored)
@@ -247,7 +259,7 @@ async function run(): Promise<void> {
         return;
       }
 
-      await sleep(SLEEP_TIME_MS);
+      await sleep(checkIntervalMs);
     }
 
     core.warning('timed out waiting for checks to complete');

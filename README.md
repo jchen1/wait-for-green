@@ -9,7 +9,7 @@ name: Merge Gate
 on: 
   pull_request: {}
 jobs:
-  wait-for-green: # make sure the action works on a clean machine without building
+  wait-for-green:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -17,6 +17,7 @@ jobs:
         id: wait-for-green
         with:
           token: '${{ secrets.GITHUB_TOKEN }}'
+          # Ignore the job we're running on lest we create an infinite loop
           ignored_checks: 'wait-for-green'
       - name: Fail if checks have failed
         if: steps.wait-for-green.outputs.success != 'true'
@@ -29,6 +30,8 @@ jobs:
 - `token` (**required**): GitHub token with `repo` scope. You probably want `secrets.GITHUB_TOKEN` here.
 - `commit`: The commit-ish to check. Defaults to `$GITHUB_HEAD_REF`, then `$GITHUB_SHA`.
 - `ignored_checks`: Either a comma-separated list of check/status names to ignore or a regex, wrapped in `/.../`.
+- `check_interval`: How often to check for status checks, in seconds. Defaults to 10. Useful if you are running this action in many places and are getting rate limited.
+- `max_attempts`: How many times to check statuses and checks before timing out. Defaults to 1000.
 
 ## Output
 
