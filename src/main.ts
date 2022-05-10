@@ -236,6 +236,7 @@ async function run(): Promise<void> {
       ]);
 
       core.info(`attempt ${attempt}: checks=${checks}, statuses=${statuses}`);
+
       if (checks === Status.Success && statuses === Status.Success) {
         success = true;
         break;
