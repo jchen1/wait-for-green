@@ -151,6 +151,7 @@ async function checkChecks(
       );
       return;
     }
+
     const unixTs = new Date(ts).getTime();
     const existing = statusByName[checkStatus.name];
     if (!existing || existing[0] < unixTs) {
