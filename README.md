@@ -1,6 +1,6 @@
 # Wait for Green
 
-GitHub Action that waits for commit statuses and checks to complete.
+GitHub Action that waits for commit statuses and checks to complete. This is useful when you have a lot of conditional jobs and want to have a single required check to gate merges.
 
 ## Example usage
 
