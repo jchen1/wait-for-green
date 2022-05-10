@@ -11,9 +11,18 @@ inputs:
   ignored_checks:
     required: false
     description: 'Either a comma-separated list of check/status names to ignore or a regex wrapped in /.../.'
+  check_interval:
+    required: false
+    description: 'How often to check for status checks, in seconds. Defaults to 10. Useful if you are running this action in many places and are getting rate limited.'
+  max_attempts:
+    required: false
+    description: 'How many times to check statuses and checks before timing out. Defaults to 1000.'
 outputs:
   success:
     description: '"true" if all statuses are successful or skipped and "false" otherwise'
 runs:
   using: 'node16'
   main: 'dist/index.js'
+branding:
+  icon: check-circle
+  color: green
