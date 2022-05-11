@@ -169,10 +169,12 @@ function checkChecks(octokit, config, ignored) {
             statusValues.includes(Status.Canceled)) {
             return Status.Failure;
         }
-        if (statusValues.includes(Status.Pending) || statusValues.length === 0) {
+        if (statusValues.includes(Status.Pending)) {
             return Status.Pending;
         }
-        if (statusValues.every(val => val === Status.Success || val === Status.Skipped)) {
+        if (statusValues.every(val => val === Status.Success ||
+            val === Status.Skipped ||
+            statusValues.length === 0)) {
             return Status.Success;
         }
         core.warning(`Unknown checks: ${JSON.stringify(statusByName, null, 2)}`);

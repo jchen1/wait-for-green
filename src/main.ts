@@ -180,11 +180,16 @@ async function checkChecks(
   ) {
     return Status.Failure;
   }
-  if (statusValues.includes(Status.Pending) || statusValues.length === 0) {
+  if (statusValues.includes(Status.Pending)) {
     return Status.Pending;
   }
   if (
-    statusValues.every(val => val === Status.Success || val === Status.Skipped)
+    statusValues.every(
+      val =>
+        val === Status.Success ||
+        val === Status.Skipped ||
+        statusValues.length === 0
+    )
   ) {
     return Status.Success;
   }
