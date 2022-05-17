@@ -42,22 +42,8 @@ Object.defineProperty(exports, "__esModule", ({ value: true }));
 const core = __importStar(__nccwpck_require__(2186));
 const github = __importStar(__nccwpck_require__(5438));
 const process = __importStar(__nccwpck_require__(7282));
-function sleep(ms) {
-    return __awaiter(this, void 0, void 0, function* () {
-        return new Promise(resolve => {
-            setTimeout(() => resolve(), ms);
-        });
-    });
-}
-var Status;
-(function (Status) {
-    Status["Unknown"] = "unknown";
-    Status["Failure"] = "failure";
-    Status["Canceled"] = "canceled";
-    Status["Skipped"] = "skipped";
-    Status["Pending"] = "pending";
-    Status["Success"] = "success";
-})(Status || (Status = {}));
+const types_1 = __nccwpck_require__(8164);
+const util_1 = __nccwpck_require__(4024);
 function shouldIgnoreCheck(ignored, checkName) {
     if (ignored === '') {
         return false;
@@ -72,36 +58,50 @@ function checkToStatus(status) {
     switch (status) {
         case 'success':
         case 'neutral':
-            return Status.Success;
+            return types_1.Status.Success;
         case 'failure':
         case 'timed_out':
-            return Status.Failure;
+            return types_1.Status.Failure;
         case 'pending':
         case 'action_required':
         case 'queued':
         case 'in_progress':
-            return Status.Pending;
+            return types_1.Status.Pending;
         case 'skipped':
-            return Status.Skipped;
+            return types_1.Status.Skipped;
         case 'canceled':
         case 'cancelled':
-            return Status.Canceled;
+            return types_1.Status.Canceled;
         default:
             core.warning(`unhandled check status: ${status}`);
-            return Status.Unknown;
+            return types_1.Status.Unknown;
     }
 }
 function stringToStatus(status) {
     switch (status) {
         case 'success':
-            return Status.Success;
+            return types_1.Status.Success;
         case 'failure':
-            return Status.Failure;
+            return types_1.Status.Failure;
         case 'pending':
-            return Status.Pending;
+            return types_1.Status.Pending;
         default:
             core.warning(`unhandled status: ${status}`);
-            return Status.Unknown;
+            return types_1.Status.Unknown;
+    }
+}
+function statusToMessage(status) {
+    switch (status) {
+        case types_1.Status.Success:
+            return '🟢 Success';
+        case types_1.Status.Failure:
+            return '🔴 Failure';
+        case types_1.Status.Pending:
+            return '⏳ Pending';
+        case types_1.Status.Canceled:
+            return '🚫 Canceled';
+        default:
+            return status;
     }
 }
 function combinedStatusToStatus(status, ignored) {
@@ -112,32 +112,41 @@ function combinedStatusToStatus(status, ignored) {
         }
         const ts = new Date(simpleStatus.updated_at).getTime();
         const existing = statusByContext[simpleStatus.context];
-        if (!existing || existing[0] < ts) {
+        if (!existing || new Date(existing[0].updated_at).getTime() < ts) {
             const newStatus = stringToStatus(simpleStatus.state);
-            statusByContext[simpleStatus.context] = [
-                new Date(simpleStatus.updated_at).getTime(),
-                newStatus
-            ];
+            statusByContext[simpleStatus.context] = [simpleStatus, newStatus];
             core.info(`${existing ? 'updating' : 'creating'} context ${simpleStatus.context} with status ${newStatus}`);
         }
         else {
             core.info(`status with context ${simpleStatus.context} has superseding status, skipping...`);
         }
     });
+    core.summary.addHeading('Statuses', 2).addTable([
+        [
+            { data: 'Name', header: true },
+            { data: 'Status', header: true }
+        ],
+        ...Object.keys(statusByContext)
+            .sort()
+            .map(key => [
+            `<a href='${statusByContext[key][0].url}'>${key}</a>`,
+            statusToMessage(statusByContext[key][1])
+        ])
+    ]);
     const statusValues = Object.values(statusByContext).map(x => x[1]);
-    if (statusValues.includes(Status.Failure) ||
-        statusValues.includes(Status.Canceled)) {
-        return Status.Failure;
+    if (statusValues.includes(types_1.Status.Failure) ||
+        statusValues.includes(types_1.Status.Canceled)) {
+        return types_1.Status.Failure;
     }
-    if (statusValues.includes(Status.Pending)) {
-        return Status.Pending;
+    if (statusValues.includes(types_1.Status.Pending)) {
+        return types_1.Status.Pending;
     }
-    if (statusValues.every(val => val === Status.Success || val === Status.Skipped) ||
+    if (statusValues.every(val => val === types_1.Status.Success || val === types_1.Status.Skipped) ||
         statusValues.length === 0) {
-        return Status.Success;
+        return types_1.Status.Success;
     }
     core.warning(`unknown statuses: ${JSON.stringify(statusByContext, null, 2)}`);
-    return Status.Unknown;
+    return types_1.Status.Unknown;
 }
 function checkChecks(octokit, config, ignored) {
     return __awaiter(this, void 0, void 0, function* () {
@@ -157,28 +166,40 @@ function checkChecks(octokit, config, ignored) {
             const existing = statusByName[checkStatus.name];
             if (!existing || existing[0] < unixTs) {
                 const newStatus = checkToStatus((_b = checkStatus.conclusion) !== null && _b !== void 0 ? _b : checkStatus.status);
-                statusByName[checkStatus.name] = [unixTs, newStatus];
+                statusByName[checkStatus.name] = [unixTs, checkStatus, newStatus];
                 core.info(`${existing ? 'updating' : 'found'} check ${checkStatus.name} with status ${newStatus}`);
             }
             else {
                 core.info(`check ${checkStatus.name} has superseding status, skipping...`);
             }
         });
-        const statusValues = Object.values(statusByName).map(x => x[1]);
-        if (statusValues.includes(Status.Failure) ||
-            statusValues.includes(Status.Canceled)) {
-            return Status.Failure;
+        core.summary.addHeading('Checks', 2).addTable([
+            [
+                { data: 'Name', header: true },
+                { data: 'Status', header: true }
+            ],
+            ...Object.keys(statusByName)
+                .sort()
+                .map(key => [
+                `<a href='${statusByName[key][1].html_url}'>${key}</a>`,
+                statusToMessage(statusByName[key][2])
+            ])
+        ]);
+        const statusValues = Object.values(statusByName).map(x => x[2]);
+        if (statusValues.includes(types_1.Status.Failure) ||
+            statusValues.includes(types_1.Status.Canceled)) {
+            return types_1.Status.Failure;
         }
-        if (statusValues.includes(Status.Pending)) {
-            return Status.Pending;
+        if (statusValues.includes(types_1.Status.Pending)) {
+            return types_1.Status.Pending;
         }
-        if (statusValues.every(val => val === Status.Success ||
-            val === Status.Skipped ||
+        if (statusValues.every(val => val === types_1.Status.Success ||
+            val === types_1.Status.Skipped ||
             statusValues.length === 0)) {
-            return Status.Success;
+            return types_1.Status.Success;
         }
         core.warning(`Unknown checks: ${JSON.stringify(statusByName, null, 2)}`);
-        return Status.Unknown;
+        return types_1.Status.Unknown;
     });
 }
 function checkStatuses(octokit, config, ignored) {
@@ -221,22 +242,24 @@ function run() {
             }
             core.info(`checking statuses & checks for ${owner}/${repo}@${ref}...`);
             for (let attempt = 0; attempt < maxAttempts; attempt++) {
+                yield core.summary.clear();
                 const [checks, statuses] = yield Promise.all([
                     checkChecks(octokit, config, ignored),
                     checkStatuses(octokit, config, ignored)
                 ]);
+                yield core.summary.write();
                 core.info(`attempt ${attempt}: checks=${checks}, statuses=${statuses}`);
-                if (checks === Status.Success && statuses === Status.Success) {
+                if (checks === types_1.Status.Success && statuses === types_1.Status.Success) {
                     core.info(`setting output \`success\` to \`true\``);
                     core.setOutput('success', true);
                     return;
                 }
-                else if (checks === Status.Failure || statuses === Status.Failure) {
+                else if (checks === types_1.Status.Failure || statuses === types_1.Status.Failure) {
                     core.info(`setting output \`success\` to \`false\``);
                     core.setOutput('success', false);
                     return;
                 }
-                yield sleep(checkIntervalMs);
+                yield (0, util_1.sleep)(checkIntervalMs);
             }
             core.warning('timed out waiting for checks to complete');
             core.setOutput('success', false);
@@ -249,6 +272,54 @@ function run() {
     });
 }
 run();
+
+
+/***/ }),
+
+/***/ 8164:
+/***/ ((__unused_webpack_module, exports) => {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.Status = void 0;
+var Status;
+(function (Status) {
+    Status["Unknown"] = "Unknown";
+    Status["Failure"] = "Failure";
+    Status["Canceled"] = "Canceled";
+    Status["Skipped"] = "Skipped";
+    Status["Pending"] = "Pending";
+    Status["Success"] = "Success";
+})(Status = exports.Status || (exports.Status = {}));
+
+
+/***/ }),
+
+/***/ 4024:
+/***/ (function(__unused_webpack_module, exports) {
+
+"use strict";
+
+var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.sleep = void 0;
+function sleep(ms) {
+    return __awaiter(this, void 0, void 0, function* () {
+        return new Promise(resolve => {
+            setTimeout(() => resolve(), ms);
+        });
+    });
+}
+exports.sleep = sleep;
 
 
 /***/ }),

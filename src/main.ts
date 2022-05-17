@@ -1,32 +1,11 @@
 import * as core from '@actions/core';
 import * as github from '@actions/github';
-import {GitHub} from '@actions/github/lib/utils';
-import type {GetResponseDataTypeFromEndpointMethod} from '@octokit/types';
-
 import * as process from 'process';
 
-type Octokit = InstanceType<typeof GitHub>;
+import type {GetResponseDataTypeFromEndpointMethod} from '@octokit/types';
 
-type Config = {
-  owner: string;
-  repo: string;
-  ref: string;
-};
-
-async function sleep(ms: number): Promise<void> {
-  return new Promise<void>(resolve => {
-    setTimeout(() => resolve(), ms);
-  });
-}
-
-enum Status {
-  Unknown = 'unknown',
-  Failure = 'failure',
-  Canceled = 'canceled',
-  Skipped = 'skipped',
-  Pending = 'pending',
-  Success = 'success'
-}
+import {Config, Octokit, Status} from './types';
+import {sleep} from './util';
 
 function shouldIgnoreCheck(ignored: string, checkName: string): boolean {
   if (ignored === '') {
@@ -79,25 +58,40 @@ function stringToStatus(status: string): Status {
   }
 }
 
+function statusToMessage(status: Status): string {
+  switch (status) {
+    case Status.Success:
+      return '🟢 Success';
+    case Status.Failure:
+      return '🔴 Failure';
+    case Status.Pending:
+      return '⏳ Pending';
+    case Status.Canceled:
+      return '🚫 Canceled';
+    default:
+      return status;
+  }
+}
+
 function combinedStatusToStatus(
   status: GetResponseDataTypeFromEndpointMethod<
     Octokit['rest']['repos']['getCombinedStatusForRef']
   >,
   ignored: string
 ): Status {
-  const statusByContext: Record<string, [number, Status]> = {};
+  const statusByContext: Record<
+    string,
+    [typeof status['statuses'][number], Status]
+  > = {};
   status.statuses.forEach(simpleStatus => {
     if (shouldIgnoreCheck(ignored, simpleStatus.context)) {
       return;
     }
     const ts = new Date(simpleStatus.updated_at).getTime();
     const existing = statusByContext[simpleStatus.context];
-    if (!existing || existing[0] < ts) {
+    if (!existing || new Date(existing[0].updated_at).getTime() < ts) {
       const newStatus = stringToStatus(simpleStatus.state);
-      statusByContext[simpleStatus.context] = [
-        new Date(simpleStatus.updated_at).getTime(),
-        newStatus
-      ];
+      statusByContext[simpleStatus.context] = [simpleStatus, newStatus];
       core.info(
         `${existing ? 'updating' : 'creating'} context ${
           simpleStatus.context
@@ -109,6 +103,19 @@ function combinedStatusToStatus(
       );
     }
   });
+
+  core.summary.addHeading('Statuses', 2).addTable([
+    [
+      {data: 'Name', header: true},
+      {data: 'Status', header: true}
+    ],
+    ...Object.keys(statusByContext)
+      .sort()
+      .map(key => [
+        `<a href='${statusByContext[key][0].url}'>${key}</a>`,
+        statusToMessage(statusByContext[key][1])
+      ])
+  ]);
 
   const statusValues = Object.values(statusByContext).map(x => x[1]);
   if (
@@ -139,7 +146,10 @@ async function checkChecks(
   ignored: string
 ): Promise<Status> {
   const checks = await octokit.rest.checks.listForRef(config);
-  const statusByName: Record<string, [number, Status]> = {};
+  const statusByName: Record<
+    string,
+    [number, typeof checks.data.check_runs[number], Status]
+  > = {};
 
   checks.data.check_runs.forEach(checkStatus => {
     if (shouldIgnoreCheck(ignored, checkStatus.name)) {
@@ -160,7 +170,7 @@ async function checkChecks(
       const newStatus = checkToStatus(
         checkStatus.conclusion ?? checkStatus.status
       );
-      statusByName[checkStatus.name] = [unixTs, newStatus];
+      statusByName[checkStatus.name] = [unixTs, checkStatus, newStatus];
       core.info(
         `${existing ? 'updating' : 'found'} check ${
           checkStatus.name
@@ -173,7 +183,20 @@ async function checkChecks(
     }
   });
 
-  const statusValues = Object.values(statusByName).map(x => x[1]);
+  core.summary.addHeading('Checks', 2).addTable([
+    [
+      {data: 'Name', header: true},
+      {data: 'Status', header: true}
+    ],
+    ...Object.keys(statusByName)
+      .sort()
+      .map(key => [
+        `<a href='${statusByName[key][1].html_url}'>${key}</a>`,
+        statusToMessage(statusByName[key][2])
+      ])
+  ]);
+
+  const statusValues = Object.values(statusByName).map(x => x[2]);
   if (
     statusValues.includes(Status.Failure) ||
     statusValues.includes(Status.Canceled)
@@ -259,10 +282,14 @@ async function run(): Promise<void> {
     core.info(`checking statuses & checks for ${owner}/${repo}@${ref}...`);
 
     for (let attempt = 0; attempt < maxAttempts; attempt++) {
+      await core.summary.clear();
+
       const [checks, statuses] = await Promise.all([
         checkChecks(octokit, config, ignored),
         checkStatuses(octokit, config, ignored)
       ]);
+
+      await core.summary.write();
 
       core.info(`attempt ${attempt}: checks=${checks}, statuses=${statuses}`);
       if (checks === Status.Success && statuses === Status.Success) {

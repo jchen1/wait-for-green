@@ -1,6 +1,6 @@
 {
   "name": "wait-for-green",
-  "version": "0.0.1",
+  "version": "1.0.5",
   "private": true,
   "description": "GitHub Action to wait for commit statuses and checks to become green",
   "main": "lib/main.js",
