@@ -1,32 +1,11 @@
 import * as core from '@actions/core';
 import * as github from '@actions/github';
-import {GitHub} from '@actions/github/lib/utils';
-import type {GetResponseDataTypeFromEndpointMethod} from '@octokit/types';
-
 import * as process from 'process';
 
-type Octokit = InstanceType<typeof GitHub>;
+import type {GetResponseDataTypeFromEndpointMethod} from '@octokit/types';
 
-type Config = {
-  owner: string;
-  repo: string;
-  ref: string;
-};
-
-async function sleep(ms: number): Promise<void> {
-  return new Promise<void>(resolve => {
-    setTimeout(() => resolve(), ms);
-  });
-}
-
-enum Status {
-  Unknown = 'unknown',
-  Failure = 'failure',
-  Canceled = 'canceled',
-  Skipped = 'skipped',
-  Pending = 'pending',
-  Success = 'success'
-}
+import {Config, Octokit, Status} from './types';
+import {sleep} from './util';
 
 function shouldIgnoreCheck(ignored: string, checkName: string): boolean {
   if (ignored === '') {
@@ -110,6 +89,16 @@ function combinedStatusToStatus(
     }
   });
 
+  core.summary.addHeading('Statuses', 2).addTable([
+    [
+      {data: 'Name', header: true},
+      {data: 'Status', header: true}
+    ],
+    ...Object.keys(statusByContext)
+      .sort()
+      .map(key => [key, statusByContext[key][1]])
+  ]);
+
   const statusValues = Object.values(statusByContext).map(x => x[1]);
   if (
     statusValues.includes(Status.Failure) ||
@@ -172,6 +161,16 @@ async function checkChecks(
       );
     }
   });
+
+  core.summary.addHeading('Checks', 2).addTable([
+    [
+      {data: 'Name', header: true},
+      {data: 'Status', header: true}
+    ],
+    ...Object.keys(statusByName)
+      .sort()
+      .map(key => [key, statusByName[key][1]])
+  ]);
 
   const statusValues = Object.values(statusByName).map(x => x[1]);
   if (
@@ -259,10 +258,14 @@ async function run(): Promise<void> {
     core.info(`checking statuses & checks for ${owner}/${repo}@${ref}...`);
 
     for (let attempt = 0; attempt < maxAttempts; attempt++) {
+      await core.summary.clear();
+
       const [checks, statuses] = await Promise.all([
         checkChecks(octokit, config, ignored),
         checkStatuses(octokit, config, ignored)
       ]);
+
+      await core.summary.write();
 
       core.info(`attempt ${attempt}: checks=${checks}, statuses=${statuses}`);
       if (checks === Status.Success && statuses === Status.Success) {
