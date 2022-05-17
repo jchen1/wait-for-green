@@ -112,7 +112,7 @@ function combinedStatusToStatus(
     ...Object.keys(statusByContext)
       .sort()
       .map(key => [
-        `[${key}](${statusByContext[key][0].url})`,
+        `<a href='${statusByContext[key][0].url}'>${key}</a>`,
         statusToMessage(statusByContext[key][1])
       ])
   ]);
@@ -191,7 +191,7 @@ async function checkChecks(
     ...Object.keys(statusByName)
       .sort()
       .map(key => [
-        `[${key}](${statusByName[key][1].html_url})`,
+        `<a href='${statusByName[key][1].html_url}'>${key}</a>`,
         statusToMessage(statusByName[key][2])
       ])
   ]);
