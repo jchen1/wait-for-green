@@ -90,6 +90,20 @@ function stringToStatus(status) {
             return types_1.Status.Unknown;
     }
 }
+function statusToMessage(status) {
+    switch (status) {
+        case types_1.Status.Success:
+            return '🟢 Success';
+        case types_1.Status.Failure:
+            return '🔴 Failure';
+        case types_1.Status.Pending:
+            return '⏳ Pending';
+        case types_1.Status.Canceled:
+            return '🚫 Canceled';
+        default:
+            return status;
+    }
+}
 function combinedStatusToStatus(status, ignored) {
     const statusByContext = {};
     status.statuses.forEach(simpleStatus => {
@@ -116,7 +130,7 @@ function combinedStatusToStatus(status, ignored) {
             .sort()
             .map(key => [
             `[${key}](${statusByContext[key][0].url})`,
-            statusByContext[key][1]
+            statusToMessage(statusByContext[key][1])
         ])
     ]);
     const statusValues = Object.values(statusByContext).map(x => x[1]);
@@ -168,7 +182,7 @@ function checkChecks(octokit, config, ignored) {
                 .sort()
                 .map(key => [
                 `[${key}](${statusByName[key][1].html_url})`,
-                statusByName[key][2]
+                statusToMessage(statusByName[key][2])
             ])
         ]);
         const statusValues = Object.values(statusByName).map(x => x[2]);
@@ -271,12 +285,12 @@ Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.Status = void 0;
 var Status;
 (function (Status) {
-    Status["Unknown"] = "unknown";
-    Status["Failure"] = "failure";
-    Status["Canceled"] = "canceled";
-    Status["Skipped"] = "skipped";
-    Status["Pending"] = "pending";
-    Status["Success"] = "success";
+    Status["Unknown"] = "Unknown";
+    Status["Failure"] = "Failure";
+    Status["Canceled"] = "Canceled";
+    Status["Skipped"] = "Skipped";
+    Status["Pending"] = "Pending";
+    Status["Success"] = "Success";
 })(Status = exports.Status || (exports.Status = {}));
 
 

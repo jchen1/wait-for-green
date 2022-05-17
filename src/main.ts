@@ -58,6 +58,21 @@ function stringToStatus(status: string): Status {
   }
 }
 
+function statusToMessage(status: Status): string {
+  switch (status) {
+    case Status.Success:
+      return '🟢 Success';
+    case Status.Failure:
+      return '🔴 Failure';
+    case Status.Pending:
+      return '⏳ Pending';
+    case Status.Canceled:
+      return '🚫 Canceled';
+    default:
+      return status;
+  }
+}
+
 function combinedStatusToStatus(
   status: GetResponseDataTypeFromEndpointMethod<
     Octokit['rest']['repos']['getCombinedStatusForRef']
@@ -98,7 +113,7 @@ function combinedStatusToStatus(
       .sort()
       .map(key => [
         `[${key}](${statusByContext[key][0].url})`,
-        statusByContext[key][1]
+        statusToMessage(statusByContext[key][1])
       ])
   ]);
 
@@ -177,7 +192,7 @@ async function checkChecks(
       .sort()
       .map(key => [
         `[${key}](${statusByName[key][1].html_url})`,
-        statusByName[key][2]
+        statusToMessage(statusByName[key][2])
       ])
   ]);
 

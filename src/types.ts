@@ -9,10 +9,10 @@ export type Config = {
 };
 
 export enum Status {
-  Unknown = 'unknown',
-  Failure = 'failure',
-  Canceled = 'canceled',
-  Skipped = 'skipped',
-  Pending = 'pending',
-  Success = 'success'
+  Unknown = 'Unknown',
+  Failure = 'Failure',
+  Canceled = 'Canceled',
+  Skipped = 'Skipped',
+  Pending = 'Pending',
+  Success = 'Success'
 }
