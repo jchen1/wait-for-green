@@ -98,12 +98,9 @@ function combinedStatusToStatus(status, ignored) {
         }
         const ts = new Date(simpleStatus.updated_at).getTime();
         const existing = statusByContext[simpleStatus.context];
-        if (!existing || existing[0] < ts) {
+        if (!existing || new Date(existing[0].updated_at).getTime() < ts) {
             const newStatus = stringToStatus(simpleStatus.state);
-            statusByContext[simpleStatus.context] = [
-                new Date(simpleStatus.updated_at).getTime(),
-                newStatus
-            ];
+            statusByContext[simpleStatus.context] = [simpleStatus, newStatus];
             core.info(`${existing ? 'updating' : 'creating'} context ${simpleStatus.context} with status ${newStatus}`);
         }
         else {
@@ -117,7 +114,10 @@ function combinedStatusToStatus(status, ignored) {
         ],
         ...Object.keys(statusByContext)
             .sort()
-            .map(key => [key, statusByContext[key][1]])
+            .map(key => [
+            `[${key}](${statusByContext[key][0].url})`,
+            statusByContext[key][1]
+        ])
     ]);
     const statusValues = Object.values(statusByContext).map(x => x[1]);
     if (statusValues.includes(types_1.Status.Failure) ||
@@ -152,7 +152,7 @@ function checkChecks(octokit, config, ignored) {
             const existing = statusByName[checkStatus.name];
             if (!existing || existing[0] < unixTs) {
                 const newStatus = checkToStatus((_b = checkStatus.conclusion) !== null && _b !== void 0 ? _b : checkStatus.status);
-                statusByName[checkStatus.name] = [unixTs, newStatus];
+                statusByName[checkStatus.name] = [unixTs, checkStatus, newStatus];
                 core.info(`${existing ? 'updating' : 'found'} check ${checkStatus.name} with status ${newStatus}`);
             }
             else {
@@ -166,9 +166,12 @@ function checkChecks(octokit, config, ignored) {
             ],
             ...Object.keys(statusByName)
                 .sort()
-                .map(key => [key, statusByName[key][1]])
+                .map(key => [
+                `[${key}](${statusByName[key][1].html_url})`,
+                statusByName[key][2]
+            ])
         ]);
-        const statusValues = Object.values(statusByName).map(x => x[1]);
+        const statusValues = Object.values(statusByName).map(x => x[2]);
         if (statusValues.includes(types_1.Status.Failure) ||
             statusValues.includes(types_1.Status.Canceled)) {
             return types_1.Status.Failure;

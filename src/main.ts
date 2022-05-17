@@ -64,19 +64,19 @@ function combinedStatusToStatus(
   >,
   ignored: string
 ): Status {
-  const statusByContext: Record<string, [number, Status]> = {};
+  const statusByContext: Record<
+    string,
+    [typeof status['statuses'][number], Status]
+  > = {};
   status.statuses.forEach(simpleStatus => {
     if (shouldIgnoreCheck(ignored, simpleStatus.context)) {
       return;
     }
     const ts = new Date(simpleStatus.updated_at).getTime();
     const existing = statusByContext[simpleStatus.context];
-    if (!existing || existing[0] < ts) {
+    if (!existing || new Date(existing[0].updated_at).getTime() < ts) {
       const newStatus = stringToStatus(simpleStatus.state);
-      statusByContext[simpleStatus.context] = [
-        new Date(simpleStatus.updated_at).getTime(),
-        newStatus
-      ];
+      statusByContext[simpleStatus.context] = [simpleStatus, newStatus];
       core.info(
         `${existing ? 'updating' : 'creating'} context ${
           simpleStatus.context
@@ -96,7 +96,10 @@ function combinedStatusToStatus(
     ],
     ...Object.keys(statusByContext)
       .sort()
-      .map(key => [key, statusByContext[key][1]])
+      .map(key => [
+        `[${key}](${statusByContext[key][0].url})`,
+        statusByContext[key][1]
+      ])
   ]);
 
   const statusValues = Object.values(statusByContext).map(x => x[1]);
@@ -128,7 +131,10 @@ async function checkChecks(
   ignored: string
 ): Promise<Status> {
   const checks = await octokit.rest.checks.listForRef(config);
-  const statusByName: Record<string, [number, Status]> = {};
+  const statusByName: Record<
+    string,
+    [number, typeof checks.data.check_runs[number], Status]
+  > = {};
 
   checks.data.check_runs.forEach(checkStatus => {
     if (shouldIgnoreCheck(ignored, checkStatus.name)) {
@@ -149,7 +155,7 @@ async function checkChecks(
       const newStatus = checkToStatus(
         checkStatus.conclusion ?? checkStatus.status
       );
-      statusByName[checkStatus.name] = [unixTs, newStatus];
+      statusByName[checkStatus.name] = [unixTs, checkStatus, newStatus];
       core.info(
         `${existing ? 'updating' : 'found'} check ${
           checkStatus.name
@@ -169,10 +175,13 @@ async function checkChecks(
     ],
     ...Object.keys(statusByName)
       .sort()
-      .map(key => [key, statusByName[key][1]])
+      .map(key => [
+        `[${key}](${statusByName[key][1].html_url})`,
+        statusByName[key][2]
+      ])
   ]);
 
-  const statusValues = Object.values(statusByName).map(x => x[1]);
+  const statusValues = Object.values(statusByName).map(x => x[2]);
   if (
     statusValues.includes(Status.Failure) ||
     statusValues.includes(Status.Canceled)
