@@ -164,13 +164,15 @@ async function checkChecks(
       return;
     }
 
+    const statusName = `${checkStatus.name}|${checkStatus.check_suite?.id}`;
+
     const unixTs = new Date(ts).getTime();
-    const existing = statusByName[checkStatus.name];
+    const existing = statusByName[statusName];
     if (!existing || existing[0] < unixTs) {
       const newStatus = checkToStatus(
         checkStatus.conclusion ?? checkStatus.status
       );
-      statusByName[checkStatus.name] = [unixTs, checkStatus, newStatus];
+      statusByName[statusName] = [unixTs, checkStatus, newStatus];
       core.info(
         `${existing ? 'updating' : 'found'} check ${
           checkStatus.name

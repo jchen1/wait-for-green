@@ -153,7 +153,7 @@ function checkChecks(octokit, config, ignored) {
         const checks = yield octokit.rest.checks.listForRef(config);
         const statusByName = {};
         checks.data.check_runs.forEach(checkStatus => {
-            var _a, _b;
+            var _a, _b, _c;
             if (shouldIgnoreCheck(ignored, checkStatus.name)) {
                 return;
             }
@@ -162,11 +162,12 @@ function checkChecks(octokit, config, ignored) {
                 core.warning(`no completed_at or started_at for check ${checkStatus.name}!`);
                 return;
             }
+            const statusName = `${checkStatus.name}|${(_b = checkStatus.check_suite) === null || _b === void 0 ? void 0 : _b.id}`;
             const unixTs = new Date(ts).getTime();
-            const existing = statusByName[checkStatus.name];
+            const existing = statusByName[statusName];
             if (!existing || existing[0] < unixTs) {
-                const newStatus = checkToStatus((_b = checkStatus.conclusion) !== null && _b !== void 0 ? _b : checkStatus.status);
-                statusByName[checkStatus.name] = [unixTs, checkStatus, newStatus];
+                const newStatus = checkToStatus((_c = checkStatus.conclusion) !== null && _c !== void 0 ? _c : checkStatus.status);
+                statusByName[statusName] = [unixTs, checkStatus, newStatus];
                 core.info(`${existing ? 'updating' : 'found'} check ${checkStatus.name} with status ${newStatus}`);
             }
             else {
