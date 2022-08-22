@@ -176,7 +176,7 @@ async function checkChecks(
       core.info(
         `${existing ? 'updating' : 'found'} check ${
           checkStatus.name
-        } with status ${newStatus}`
+        } with status ${newStatus} (${checkStatus.html_url})`
       );
     } else {
       core.info(

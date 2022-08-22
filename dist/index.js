@@ -168,7 +168,7 @@ function checkChecks(octokit, config, ignored) {
             if (!existing || existing[0] < unixTs) {
                 const newStatus = checkToStatus((_c = checkStatus.conclusion) !== null && _c !== void 0 ? _c : checkStatus.status);
                 statusByName[statusName] = [unixTs, checkStatus, newStatus];
-                core.info(`${existing ? 'updating' : 'found'} check ${checkStatus.name} with status ${newStatus}`);
+                core.info(`${existing ? 'updating' : 'found'} check ${checkStatus.name} with status ${newStatus} (${checkStatus.html_url})`);
             }
             else {
                 core.info(`check ${checkStatus.name} has superseding status, skipping...`);
