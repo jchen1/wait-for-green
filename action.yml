@@ -21,7 +21,7 @@ outputs:
   success:
     description: '"true" if all statuses are successful or skipped and "false" otherwise'
 runs:
-  using: 'node16'
+  using: 'node20'
   main: 'dist/index.js'
 branding:
   icon: check-circle

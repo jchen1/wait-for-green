@@ -145,13 +145,13 @@ async function checkChecks(
   config: Config,
   ignored: string
 ): Promise<Status> {
-  const checks = await octokit.rest.checks.listForRef(config);
+  const checks = await octokit.paginate(octokit.rest.checks.listForRef, config);
   const statusByName: Record<
     string,
-    [number, typeof checks.data.check_runs[number], Status]
+    [number, typeof checks.check_runs[number], Status]
   > = {};
 
-  checks.data.check_runs.forEach(checkStatus => {
+  checks.check_runs.forEach(checkStatus => {
     if (shouldIgnoreCheck(ignored, checkStatus.name)) {
       return;
     }
@@ -228,8 +228,11 @@ async function checkStatuses(
   config: Config,
   ignored: string
 ): Promise<Status> {
-  const statuses = await octokit.rest.repos.getCombinedStatusForRef(config);
-  return combinedStatusToStatus(statuses.data, ignored);
+  const statuses = await octokit.paginate(
+    octokit.rest.repos.getCombinedStatusForRef,
+    config
+  );
+  return combinedStatusToStatus(statuses, ignored);
 }
 
 async function run(): Promise<void> {
