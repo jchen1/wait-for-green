@@ -13,7 +13,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: jchen1/wait-for-green@v2
+      - uses: jchen1/wait-for-green@v2.0.0
         id: wait-for-green
         with:
           token: '${{ secrets.GITHUB_TOKEN }}'
