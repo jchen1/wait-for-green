@@ -268,6 +268,7 @@ function run() {
         catch (error) {
             if (error instanceof Error) {
                 core.error(error);
+                core.error(error.stack || '');
                 core.setFailed(error.message);
             }
         }
