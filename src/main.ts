@@ -146,12 +146,10 @@ async function checkChecks(
   ignored: string
 ): Promise<Status> {
   const checks = await octokit.paginate(octokit.rest.checks.listForRef, config);
-  const statusByName: Record<
-    string,
-    [number, typeof checks.check_runs[number], Status]
-  > = {};
+  const statusByName: Record<string, [number, typeof checks[number], Status]> =
+    {};
 
-  checks.check_runs.forEach(checkStatus => {
+  checks.forEach(checkStatus => {
     if (shouldIgnoreCheck(ignored, checkStatus.name)) {
       return;
     }
@@ -228,11 +226,8 @@ async function checkStatuses(
   config: Config,
   ignored: string
 ): Promise<Status> {
-  const statuses = await octokit.paginate(
-    octokit.rest.repos.getCombinedStatusForRef,
-    config
-  );
-  return combinedStatusToStatus(statuses, ignored);
+  const statuses = await octokit.rest.repos.getCombinedStatusForRef(config);
+  return combinedStatusToStatus(statuses.data, ignored);
 }
 
 async function run(): Promise<void> {
@@ -314,7 +309,8 @@ async function run(): Promise<void> {
     core.setOutput('success', false);
   } catch (error) {
     if (error instanceof Error) {
-      core.setFailed(error.message);
+      core.setFailed(error);
+      core.error(error.stack || '');
     }
   }
 }

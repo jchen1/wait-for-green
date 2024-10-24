@@ -152,7 +152,7 @@ function checkChecks(octokit, config, ignored) {
     return __awaiter(this, void 0, void 0, function* () {
         const checks = yield octokit.paginate(octokit.rest.checks.listForRef, config);
         const statusByName = {};
-        checks.check_runs.forEach(checkStatus => {
+        checks.forEach(checkStatus => {
             var _a, _b, _c;
             if (shouldIgnoreCheck(ignored, checkStatus.name)) {
                 return;
@@ -205,8 +205,8 @@ function checkChecks(octokit, config, ignored) {
 }
 function checkStatuses(octokit, config, ignored) {
     return __awaiter(this, void 0, void 0, function* () {
-        const statuses = yield octokit.paginate(octokit.rest.repos.getCombinedStatusForRef, config);
-        return combinedStatusToStatus(statuses, ignored);
+        const statuses = yield octokit.rest.repos.getCombinedStatusForRef(config);
+        return combinedStatusToStatus(statuses.data, ignored);
     });
 }
 function run() {
@@ -267,7 +267,8 @@ function run() {
         }
         catch (error) {
             if (error instanceof Error) {
-                core.setFailed(error.message);
+                core.setFailed(error);
+                core.error(error.stack || '');
             }
         }
     });
