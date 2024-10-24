@@ -6,14 +6,14 @@ GitHub Action that waits for commit statuses and checks to complete. This is use
 
 ```yaml
 name: Merge Gate
-on: 
+on:
   pull_request: {}
 jobs:
   wait-for-green:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
-      - uses: jchen1/wait-for-green@v1.0.7
+      - uses: actions/checkout@v4
+      - uses: jchen1/wait-for-green@v2
         id: wait-for-green
         with:
           token: '${{ secrets.GITHUB_TOKEN }}'
@@ -22,7 +22,6 @@ jobs:
       - name: Fail if checks have failed
         if: steps.wait-for-green.outputs.success != 'true'
         run: echo "Status checks failed with status ${{ steps.wait-for-green.outputs.success }}!" && exit 1
-
 ```
 
 ## Options
