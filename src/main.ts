@@ -74,16 +74,13 @@ function statusToMessage(status: Status): string {
 }
 
 function combinedStatusToStatus(
-  status: GetResponseDataTypeFromEndpointMethod<
+  statuses: GetResponseDataTypeFromEndpointMethod<
     Octokit['rest']['repos']['getCombinedStatusForRef']
-  >,
+  >['statuses'],
   ignored: string
 ): Status {
-  const statusByContext: Record<
-    string,
-    [typeof status['statuses'][number], Status]
-  > = {};
-  status.statuses.forEach(simpleStatus => {
+  const statusByContext: Record<string, [typeof statuses[number], Status]> = {};
+  statuses.forEach(simpleStatus => {
     if (shouldIgnoreCheck(ignored, simpleStatus.context)) {
       return;
     }

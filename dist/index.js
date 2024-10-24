@@ -104,9 +104,9 @@ function statusToMessage(status) {
             return status;
     }
 }
-function combinedStatusToStatus(status, ignored) {
+function combinedStatusToStatus(statuses, ignored) {
     const statusByContext = {};
-    status.statuses.forEach(simpleStatus => {
+    statuses.forEach(simpleStatus => {
         if (shouldIgnoreCheck(ignored, simpleStatus.context)) {
             return;
         }
