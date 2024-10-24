@@ -314,6 +314,7 @@ async function run(): Promise<void> {
     core.setOutput('success', false);
   } catch (error) {
     if (error instanceof Error) {
+      core.error(error);
       core.setFailed(error.message);
     }
   }
