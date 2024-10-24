@@ -104,9 +104,9 @@ function statusToMessage(status) {
             return status;
     }
 }
-function combinedStatusToStatus(statuses, ignored) {
+function combinedStatusToStatus(status, ignored) {
     const statusByContext = {};
-    statuses.forEach(simpleStatus => {
+    status.statuses.forEach(simpleStatus => {
         if (shouldIgnoreCheck(ignored, simpleStatus.context)) {
             return;
         }
@@ -205,9 +205,8 @@ function checkChecks(octokit, config, ignored) {
 }
 function checkStatuses(octokit, config, ignored) {
     return __awaiter(this, void 0, void 0, function* () {
-        const statuses = yield octokit.paginate(octokit.rest.repos.getCombinedStatusForRef, config);
-        core.info(JSON.stringify(statuses, null, 2));
-        return combinedStatusToStatus(statuses, ignored);
+        const statuses = yield octokit.rest.repos.getCombinedStatusForRef(config);
+        return combinedStatusToStatus(statuses.data, ignored);
     });
 }
 function run() {

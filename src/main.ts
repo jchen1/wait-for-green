@@ -74,13 +74,16 @@ function statusToMessage(status: Status): string {
 }
 
 function combinedStatusToStatus(
-  statuses: GetResponseDataTypeFromEndpointMethod<
+  status: GetResponseDataTypeFromEndpointMethod<
     Octokit['rest']['repos']['getCombinedStatusForRef']
-  >['statuses'],
+  >,
   ignored: string
 ): Status {
-  const statusByContext: Record<string, [typeof statuses[number], Status]> = {};
-  statuses.forEach(simpleStatus => {
+  const statusByContext: Record<
+    string,
+    [typeof status['statuses'][number], Status]
+  > = {};
+  status.statuses.forEach(simpleStatus => {
     if (shouldIgnoreCheck(ignored, simpleStatus.context)) {
       return;
     }
@@ -225,12 +228,8 @@ async function checkStatuses(
   config: Config,
   ignored: string
 ): Promise<Status> {
-  const statuses = await octokit.paginate(
-    octokit.rest.repos.getCombinedStatusForRef,
-    config
-  );
-  core.info(JSON.stringify(statuses, null, 2));
-  return combinedStatusToStatus(statuses, ignored);
+  const statuses = await octokit.rest.repos.getCombinedStatusForRef(config);
+  return combinedStatusToStatus(statuses.data, ignored);
 }
 
 async function run(): Promise<void> {
