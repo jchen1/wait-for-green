@@ -151,9 +151,8 @@ function combinedStatusToStatus(status, ignored) {
 function checkChecks(octokit, config, ignored) {
     return __awaiter(this, void 0, void 0, function* () {
         const checks = yield octokit.paginate(octokit.rest.checks.listForRef, config);
-        core.info(JSON.stringify(checks, null, 2));
         const statusByName = {};
-        checks.check_runs.forEach(checkStatus => {
+        checks.forEach(checkStatus => {
             var _a, _b, _c;
             if (shouldIgnoreCheck(ignored, checkStatus.name)) {
                 return;
