@@ -206,6 +206,7 @@ function checkChecks(octokit, config, ignored) {
 function checkStatuses(octokit, config, ignored) {
     return __awaiter(this, void 0, void 0, function* () {
         const statuses = yield octokit.paginate(octokit.rest.repos.getCombinedStatusForRef, config);
+        core.info(JSON.stringify(statuses, null, 2));
         return combinedStatusToStatus(statuses, ignored);
     });
 }
@@ -267,9 +268,8 @@ function run() {
         }
         catch (error) {
             if (error instanceof Error) {
-                core.error(error);
+                core.setFailed(error);
                 core.error(error.stack || '');
-                core.setFailed(error.message);
             }
         }
     });
