@@ -146,6 +146,7 @@ async function checkChecks(
   ignored: string
 ): Promise<Status> {
   const checks = await octokit.paginate(octokit.rest.checks.listForRef, config);
+  core.info(JSON.stringify(checks, null, 2));
   const statusByName: Record<
     string,
     [number, typeof checks.check_runs[number], Status]
